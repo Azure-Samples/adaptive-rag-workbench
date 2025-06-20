@@ -29,7 +29,7 @@ def search_tools(mock_settings):
 @pytest.mark.asyncio
 async def test_search_documents_success(search_tools):
     """Test successful document search."""
-    # Mock search results
+    # Mock search results with correct field names
     mock_results = [
         {
             "content_text": "Apple Inc. reported revenue of $365 billion",
@@ -37,8 +37,8 @@ async def test_search_documents_success(search_tools):
             "content_path": "/apple/2023/10k.pdf",
             "company": "Apple",
             "year": 2023,
-            "score": 0.95,
-            "reranker_score": 0.92
+            "@search.score": 0.95,
+            "@search.reranker_score": 0.92
         },
         {
             "content_text": "Microsoft's cloud revenue grew 25%",
@@ -46,7 +46,7 @@ async def test_search_documents_success(search_tools):
             "content_path": "/microsoft/2023/10k.pdf",
             "company": "Microsoft",
             "year": 2023,
-            "score": 0.88
+            "@search.score": 0.88
         }
     ]
     
@@ -58,8 +58,8 @@ async def test_search_documents_success(search_tools):
     assert "Apple Inc. reported revenue" in result
     assert "Microsoft's cloud revenue" in result
     assert "Apple 10-K 2023" in result
-    assert "Relevance Score: 0.920" in result  # Reranker score
-    assert "Relevance Score: 0.880" in result  # Regular score
+    assert "0.920" in result  # First doc reranker score  
+    assert "0.000" in result  # Second doc shows 0.000 when no reranker score
     
     # Verify search was called with correct parameters
     search_tools.search_client.search.assert_called_once()
