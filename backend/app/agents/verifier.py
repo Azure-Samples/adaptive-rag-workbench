@@ -1,18 +1,19 @@
 from typing import List, Dict
 import re
-from openai import AsyncAzureOpenAI
 from ..core.config import settings
+from ..services.azure_services import azure_service_manager
 
 class VerifierAgent:
     def __init__(self, kernel):
         self.kernel = kernel
-        self.client = AsyncAzureOpenAI(
-            azure_endpoint=settings.openai_endpoint.split('/openai/deployments')[0],
-            api_key=settings.openai_key,
-            api_version="2025-01-01-preview"
-        )
+        self.client = None
+    
+    async def _ensure_client(self):
+        if self.client is None:
+            self.client = azure_service_manager.async_openai_client
     
     async def get_response(self, retrieved_docs: List[Dict], query: str) -> str:
+        await self._ensure_client()
         verified_docs = await self.invoke(retrieved_docs, query)
         avg_confidence = sum(doc['confidence'] for doc in verified_docs) / len(verified_docs) if verified_docs else 0
         return f"Verified {len(verified_docs)} documents with average confidence: {avg_confidence:.2f}"
@@ -23,6 +24,7 @@ class VerifierAgent:
             yield f"Verified: {doc['company']} {doc['year']} (confidence: {doc['confidence']:.2f})\n"
     
     async def invoke(self, retrieved_docs: List[Dict], query: str) -> List[Dict]:
+        await self._ensure_client()
         verified_docs = []
         
         for doc in retrieved_docs:

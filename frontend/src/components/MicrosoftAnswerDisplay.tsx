@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { MessageSquare, BarChart3, List, ExternalLink, Eye } from 'lucide-react';
+import { MessageSquare, BarChart3, List, ExternalLink, Eye, Plus, RefreshCw } from 'lucide-react';
 import { Button } from './ui/button';
+import { useAuth } from '../auth/AuthContext';
 
 interface Citation {
   id: string;
@@ -43,6 +44,9 @@ interface PerplexityAnswerDisplayProps {
   processingMetadata?: ProcessingMetadata;
   isStreaming: boolean;
   ragMode: string;
+  sessionId?: string;
+  onSendMessage?: (message: string) => void;
+  onStartNewSession?: () => void;
 }
 
 export function MicrosoftAnswerDisplay({
@@ -52,10 +56,16 @@ export function MicrosoftAnswerDisplay({
   tokenUsage,
   processingMetadata,
   isStreaming,
-  ragMode
+  ragMode,
+  sessionId,
+  onSendMessage,
+  onStartNewSession
 }: PerplexityAnswerDisplayProps) {
   const [selectedCitation, setSelectedCitation] = useState<Citation | null>(null);
   const [showCitationModal, setShowCitationModal] = useState(false);
+  const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
+  const [isLoadingFollowUp, setIsLoadingFollowUp] = useState(false);
+  const { getAccessToken } = useAuth();
 
   const handleViewCitation = (citation: Citation) => {
     setSelectedCitation(citation);
@@ -63,7 +73,61 @@ export function MicrosoftAnswerDisplay({
   };
 
   const assistantMessage = messages.find(msg => msg.role === 'assistant');
+  const userMessage = messages.find(msg => msg.role === 'user');
   const answer = assistantMessage?.content || '';
+
+  const generateFollowUpQuestions = async () => {
+    if (!answer || !userMessage?.content || !sessionId) return;
+    
+    setIsLoadingFollowUp(true);
+    try {
+      const token = await getAccessToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch('/api/chat/follow-up-questions', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          original_question: userMessage.content,
+          answer: answer,
+          session_id: sessionId
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setFollowUpQuestions(data.follow_up_questions || []);
+      }
+    } catch (error) {
+      console.error('Failed to generate follow-up questions:', error);
+    } finally {
+      setIsLoadingFollowUp(false);
+    }
+  };
+
+  useEffect(() => {
+    if (answer && !isStreaming && userMessage?.content) {
+      generateFollowUpQuestions();
+    }
+  }, [answer, isStreaming, userMessage?.content, sessionId]);
+
+  const handleFollowUpClick = (question: string) => {
+    if (onSendMessage) {
+      onSendMessage(question);
+    }
+  };
+
+  const handleNewChat = () => {
+    if (onStartNewSession) {
+      onStartNewSession();
+    }
+  };
 
 
   return (
@@ -181,6 +245,70 @@ export function MicrosoftAnswerDisplay({
                 {answer}
               </ReactMarkdown>
               {isStreaming && <span className="animate-pulse text-gray-400">|</span>}
+            </div>
+          )}
+          
+          {/* Follow-up Questions Section */}
+          {answer && !isStreaming && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Continue the conversation</h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleNewChat}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  New Chat
+                </Button>
+              </div>
+              
+              {isLoadingFollowUp ? (
+                <div className="flex items-center space-x-3 py-4">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-500 border-t-transparent"></div>
+                  <span className="text-sm text-gray-600">Generating follow-up questions...</span>
+                </div>
+              ) : followUpQuestions.length > 0 ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-600 mb-3">Here are some follow-up questions you might find interesting:</p>
+                  {followUpQuestions.map((question, index) => (
+                    <Button
+                      key={index}
+                      variant="outline"
+                      className="w-full text-left justify-start h-auto p-4 text-wrap"
+                      onClick={() => handleFollowUpClick(question)}
+                    >
+                      <MessageSquare className="h-4 w-4 mr-3 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm leading-relaxed">{question}</span>
+                    </Button>
+                  ))}
+                  <div className="flex justify-center pt-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={generateFollowUpQuestions}
+                      className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Generate new suggestions
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-sm text-gray-500 mb-3">No follow-up questions available</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={generateFollowUpQuestions}
+                    className="flex items-center gap-2"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Try generating suggestions
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </Card>

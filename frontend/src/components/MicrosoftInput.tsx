@@ -14,7 +14,8 @@ import {
   Users, 
   Building2,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  ChevronRight
 } from 'lucide-react';
 
 type RAGMode = 'fast-rag' | 'agentic-rag' | 'deep-research-rag';
@@ -43,7 +44,6 @@ interface Model {
   id: string;
   name: string;
   description?: string;
-  isPro?: boolean;
 }
 
 export function MicrosoftInput({
@@ -119,16 +119,13 @@ export function MicrosoftInput({
 
   const primaryModels: Model[] = [
     { id: 'gpt-4-1', name: 'GPT-4.1', description: 'Powerful, large model for complex challenges' },
-    { id: 'gpt-o3', name: 'GPT-O3', description: 'Smart, efficient model for everyday use' },
-    { id: 'gpt-o4-mini', name: 'GPT-O4 Mini', description: 'Fastest model for daily tasks' }
+    { id: 'gpt-o3', name: 'gpt-o3', description: 'Smart, efficient model for reasoning' },
+    { id: 'gpt-o4-mini', name: 'gpt-o4-mini', description: 'Fastest model for reasoning' }
   ];
   
   const additionalModels: Model[] = [
-    { id: 'claude-sonnet-3-7', name: 'Claude Sonnet 3.7', isPro: true },
-    { id: 'claude-opus-3', name: 'Claude Opus 3', isPro: true },
-    { id: 'claude-haiku-3-5', name: 'Claude Haiku 3.5', isPro: true, description: 'Fastest model for daily tasks' },
-    { id: 'gemini-pro', name: 'Gemini Pro', isPro: true },
-    { id: 'gemini-ultra', name: 'Gemini Ultra', isPro: true }
+    { id: 'claude-sonnet-3-7', name: 'Claude Sonnet 3.7 on Azure Databricks' },
+    { id: 'gemini-2-5-pro', name: 'Gemini-2.5-pro via APIM' }
   ];
 
   const getDynamicExampleQueries = (mode: RAGMode): string[] => {
@@ -224,9 +221,7 @@ export function MicrosoftInput({
                 <Select 
                   value={selectedModel} 
                   onValueChange={(value) => {
-                    if (value === 'more-models') {
-                      setShowMoreModels(!showMoreModels);
-                    } else {
+                    if (value !== 'more-models') {
                       setSelectedModel(value);
                       setShowMoreModels(false);
                     }
@@ -235,53 +230,65 @@ export function MicrosoftInput({
                   <SelectTrigger className="w-auto min-w-[140px] h-8 px-3 text-sm font-medium border border-gray-300 rounded-md transition-colors duration-200 focus:ring-1 focus:ring-gray-400 focus:ring-offset-1 bg-white">
                     <div className="flex items-center justify-between w-full">
                       <SelectValue />
-                      {showMoreModels ? <ChevronUp className="h-3.5 w-3.5 ml-1" /> : <ChevronDown className="h-3.5 w-3.5 ml-1" />}
+                      <ChevronDown className="h-3.5 w-3.5 ml-1" />
                     </div>
                   </SelectTrigger>
                   <SelectContent className="w-64 p-0 border border-gray-300 shadow-md">
                     <div className="py-1 px-2">
                       {primaryModels.map((model) => (
-                        <SelectItem key={model.id} value={model.id} className="py-2 px-3 hover:bg-gray-100 rounded-md cursor-pointer">
-                          <div className="flex flex-col">
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium text-sm">{model.name}</span>
-                              {model.isPro && (
-                                <span className="text-xs font-medium text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">PRO</span>
-                              )}
-                            </div>
-                            {model.description && (
-                              <span className="text-xs text-gray-500 mt-0.5">{model.description}</span>
-                            )}
+                        <SelectItem key={model.id} value={model.id} className="py-1.5 px-3 hover:bg-gray-100 rounded-md cursor-pointer">
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-medium text-sm">{model.name}</span>
                           </div>
                         </SelectItem>
                       ))}
-                      <SelectItem value="more-models" className="py-2 px-3 hover:bg-gray-100 rounded-md cursor-pointer border-t border-gray-200 mt-1">
+                      <div 
+                        className="relative py-1.5 px-3 hover:bg-gray-100 rounded-md cursor-pointer border-t border-gray-200 mt-1 group"
+                        onMouseEnter={() => {
+                          console.log('Mouse entered More models');
+                          setShowMoreModels(true);
+                        }}
+                        onMouseLeave={() => {
+                          console.log('Mouse left More models');
+                          setTimeout(() => setShowMoreModels(false), 150);
+                        }}
+                      >
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium text-gray-700">More models</span>
-                          {showMoreModels ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                          <ChevronRight className="h-3.5 w-3.5" />
                         </div>
-                      </SelectItem>
-                    </div>
-                    
-                    {showMoreModels && (
-                      <div className="border-t border-gray-200 py-1 px-2 bg-gray-50">
-                        {additionalModels.map((model) => (
-                          <SelectItem key={model.id} value={model.id} className="py-2 px-3 hover:bg-gray-100 rounded-md cursor-pointer">
-                            <div className="flex flex-col">
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium text-sm">{model.name}</span>
-                                {model.isPro && (
-                                  <span className="text-xs font-medium text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">PRO</span>
-                                )}
-                              </div>
-                              {model.description && (
-                                <span className="text-xs text-gray-500 mt-0.5">{model.description}</span>
-                              )}
+                        
+                        {/* Submenu for additional models */}
+                        {showMoreModels && (
+                          <div 
+                            className="absolute left-full top-0 ml-1 w-64 bg-white border border-gray-300 shadow-lg rounded-md z-[60]"
+                            onMouseEnter={() => {
+                              console.log('Mouse entered submenu');
+                              setShowMoreModels(true);
+                            }}
+                            onMouseLeave={() => {
+                              console.log('Mouse left submenu');
+                              setShowMoreModels(false);
+                            }}
+                          >
+                            <div className="py-1 px-2">
+                              {additionalModels.map((model) => (
+                                <div
+                                  key={model.id}
+                                  className="py-1.5 px-3 hover:bg-gray-100 rounded-md cursor-pointer"
+                                  onClick={() => {
+                                    setSelectedModel(model.id);
+                                    setShowMoreModels(false);
+                                  }}
+                                >
+                                  <span className="font-medium text-sm">{model.name}</span>
+                                </div>
+                              ))}
                             </div>
-                          </SelectItem>
-                        ))}
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </SelectContent>
                 </Select>
               </div>

@@ -17,7 +17,7 @@ import './App.css';
 function Navigation() {
   const location = useLocation();
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => location.pathname === path || (path === '/context-aware-generation' && location.pathname === '/');
 
   const navItems = [
     {
@@ -49,8 +49,8 @@ function Navigation() {
         {/* Top header with logo and actions */}
         <div className="flex justify-between items-center h-20">
           <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-microsoft-blue to-microsoft-blue-dark rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-lg">AR</span>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+              <img src="https://raw.githubusercontent.com/Azure-Samples/adaptive-rag-workbench/main/.github/assets/arag-logo.png" alt="ARAG" className="w-8 h-8" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-microsoft-gray">Adaptive RAG Workbench</h1>

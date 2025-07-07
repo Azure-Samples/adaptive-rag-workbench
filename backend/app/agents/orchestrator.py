@@ -1,6 +1,6 @@
 from semantic_kernel.kernel import Kernel
 from semantic_kernel.agents import ChatCompletionAgent
-from semantic_kernel.agents.orchestration.sequential import SequentialOrchestration
+# from semantic_kernel.agents.orchestration.sequential import SequentialOrchestration  # Not available in semantic_kernel 1.3.0
 from semantic_kernel.connectors.ai.open_ai.services.azure_chat_completion import AzureChatCompletion
 from semantic_kernel.contents import ChatMessageContent
 from typing import List, Dict, AsyncIterator, Optional
@@ -98,7 +98,7 @@ class OrchestratorAgent:
         
         return ["RetrieverAgent", "WriterAgent"]
     
-    async def create_sk_orchestration(self, mode: str) -> Optional[SequentialOrchestration]:
+    async def create_sk_orchestration(self, mode: str) -> Optional[object]:
         """Create SK SequentialOrchestration based on mode using registry config or fallback"""
         await self.initialize_sk_agents()
         
@@ -127,14 +127,16 @@ class OrchestratorAgent:
             return None
         
         try:
-            orchestration = SequentialOrchestration(
-                members=agent_sequence,
-                name=f"{mode}_orchestration",
-                description=orchestration_config.get("description", f"Sequential orchestration for {mode} workflow") if orchestration_config else f"Sequential orchestration for {mode} workflow"
-            )
-            
-            self.orchestrations[mode] = orchestration
-            return orchestration
+            # orchestration = SequentialOrchestration(
+            #     members=agent_sequence,
+            #     name=f"{mode}_orchestration",
+            #     description=orchestration_config.get("description", f"Sequential orchestration for {mode} workflow") if orchestration_config else f"Sequential orchestration for {mode} workflow"
+            # )
+            # 
+            # self.orchestrations[mode] = orchestration
+            # return orchestration
+            print(f"SK orchestration not available in semantic_kernel 1.3.0, using fallback")
+            return None
         except Exception as e:
             print(f"Error creating SK orchestration: {e}")
             return None

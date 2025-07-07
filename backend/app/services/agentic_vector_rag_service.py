@@ -355,18 +355,28 @@ class AgenticVectorRAGService:
         try:
             if hasattr(response, 'usage'):
                 usage = response.usage
-                return {
-                    "prompt_tokens": getattr(usage, 'prompt_tokens', 0),
-                    "completion_tokens": getattr(usage, 'completion_tokens', 0),
-                    "total_tokens": getattr(usage, 'total_tokens', 0)
-                }
-            elif hasattr(response, 'token_usage'):
+                if hasattr(usage, 'prompt_tokens'):
+                    return {
+                        "prompt_tokens": getattr(usage, 'prompt_tokens', 0),
+                        "completion_tokens": getattr(usage, 'completion_tokens', 0),
+                        "total_tokens": getattr(usage, 'total_tokens', 0)
+                    }
+            
+            if hasattr(response, 'token_usage'):
                 usage = response.token_usage
                 return {
                     "prompt_tokens": usage.get('prompt_tokens', 0),
                     "completion_tokens": usage.get('completion_tokens', 0),
                     "total_tokens": usage.get('total_tokens', 0)
                 }
+                
+            if hasattr(response, 'prompt_tokens'):
+                return {
+                    "prompt_tokens": getattr(response, 'prompt_tokens', 0),
+                    "completion_tokens": getattr(response, 'completion_tokens', 0),
+                    "total_tokens": getattr(response, 'total_tokens', 0)
+                }
+                
         except Exception as e:
             logger.warning(f"Could not extract token usage: {e}")
         

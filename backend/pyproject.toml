@@ -28,8 +28,11 @@ black = "^24.0.0"
 pyjwt = {extras = ["crypto"], version = "^2.10.1"}
 python-multipart = "^0.0.20"
 python-jose = {extras = ["cryptography"], version = "^3.5.0"}
-azure-ai-inference = "^1.0.0b9"
+azure-ai-inference = "^1.0.0b4"
+azure-monitor-opentelemetry = "^1.6.0"
 numpy = "^1.24.0"
+azure-ai-projects = "^1.0.0b12"
+azure-ai-agents = "^1.1.0b2"
 
 
 [build-system]

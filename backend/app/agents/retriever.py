@@ -18,7 +18,8 @@ class RetrieverAgent:
             from azure.search.documents.agent.aio import KnowledgeAgentRetrievalClient
             self.agent_client = KnowledgeAgentRetrievalClient(
                 endpoint=settings.search_endpoint,
-                credential=AzureKeyCredential(settings.search_admin_key)
+                credential=AzureKeyCredential(settings.search_admin_key),
+                agent_name="retriever_agent"
             )
             self.use_agentic_retrieval = True
         except ImportError:

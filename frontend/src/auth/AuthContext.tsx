@@ -58,17 +58,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const getAccessToken = async (): Promise<string | null> => {
     if (demoUser) {
       // Return a demo token for demo mode
+      console.log('Using demo token');
       return 'demo-token';
     }
     
     try {
+      console.log('Attempting to acquire token with scope:', import.meta.env.VITE_API_SCOPE);
+      console.log('Account:', accounts[0]);
+      
       const response = await instance.acquireTokenSilent({
         scopes: [import.meta.env.VITE_API_SCOPE],
         account: accounts[0]
       });
+      console.log('Token acquired successfully');
       return response.accessToken;
     } catch (error) {
       console.error('Failed to acquire token:', error);
+      console.log('Environment variables:', {
+        VITE_API_SCOPE: import.meta.env.VITE_API_SCOPE,
+        VITE_AAD_CLIENT_ID: import.meta.env.VITE_AAD_CLIENT_ID,
+        VITE_AAD_TENANT_ID: import.meta.env.VITE_AAD_TENANT_ID
+      });
       return null;
     }
   };

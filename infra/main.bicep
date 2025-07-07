@@ -117,9 +117,10 @@ module web './app/web.bicep' = {
   name: 'web'
   scope: resourceGroup
   params: {
-    name: !empty(webServiceName) ? webServiceName : '${abbrs.webStaticSites}web-${resourceToken}'
+    name: !empty(webServiceName) ? webServiceName : '${abbrs.appContainerApps}web-${resourceToken}'
     location: location
     tags: tags
+    containerAppsEnvironmentName: containerAppsEnvironment.outputs.name
     apiBaseUrl: api.outputs.SERVICE_API_URI
   }
 }

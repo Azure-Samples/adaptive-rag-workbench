@@ -78,7 +78,7 @@ class CuratorAgent:
         else:
             return "Unknown"
     
-    def _extract_year(self, filename: str) -> int:
+    def _extract_year(self, filename: str) -> str:
         import re
         year_match = re.search(r'20\d{2}', filename)
-        return int(year_match.group()) if year_match else 2024
+        return str(year_match.group()) if year_match else "2024"
