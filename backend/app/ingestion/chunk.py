@@ -2,7 +2,7 @@ import tiktoken
 import hashlib
 from typing import Iterator, Dict, List
 
-def chunk_document(text: str, *, size: int = 1000, overlap: int = 20, company: str = "", year: int = 0) -> Iterator[Dict]:
+def chunk_document(text: str, *, size: int = 1000, overlap: int = 20, company: str = "", year: str = "2024") -> Iterator[Dict]:
     enc = tiktoken.get_encoding("cl100k_base")
     tokens = enc.encode(text)
     
@@ -23,7 +23,7 @@ def chunk_document(text: str, *, size: int = 1000, overlap: int = 20, company: s
             "year": year
         }
 
-def chunk_content(content: str, source: str, company: str = "Unknown", year: int = 2024, size: int = 1000, overlap: int = 20) -> List[Dict]:
+def chunk_content(content: str, source: str, company: str = "Unknown", year: str = "2024", size: int = 1000, overlap: int = 20) -> List[Dict]:
     """
     Chunk content into smaller pieces with proper schema for Azure Search indexing
     """

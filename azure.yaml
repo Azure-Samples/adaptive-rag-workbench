@@ -13,8 +13,10 @@ services:
   web:
     project: ./frontend
     language: js
-    host: staticwebapp
-    dist: dist
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+      context: ./frontend
 infra:
   provider: bicep
   path: infra

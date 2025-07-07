@@ -18,7 +18,9 @@ export function ContextAwareGeneration() {
     processingMetadata, 
     isLoading, 
     isStreaming,
-    sendMessage
+    sendMessage,
+    sessionId,
+    startNewSession
   } = useChatStream(selectedMode);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,6 +29,17 @@ export function ContextAwareGeneration() {
       await sendMessage(query);
       setQuery('');
     }
+  };
+
+  const handleFollowUpMessage = async (message: string) => {
+    if (!isLoading) {
+      await sendMessage(message);
+    }
+  };
+
+  const handleNewChat = () => {
+    startNewSession();
+    setQuery('');
   };
 
 
@@ -92,6 +105,9 @@ export function ContextAwareGeneration() {
                   processingMetadata={processingMetadata}
                   isStreaming={isStreaming}
                   ragMode={selectedMode}
+                  sessionId={sessionId}
+                  onSendMessage={handleFollowUpMessage}
+                  onStartNewSession={handleNewChat}
                 />
               </div>
             )}

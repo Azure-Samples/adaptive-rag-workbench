@@ -14,7 +14,9 @@ from ..agents.curator import CuratorAgent
 from ..core.globals import initialize_kernel, get_agent_registry
 from ..auth.middleware import get_current_user
 from ..services.agentic_vector_rag_service import agentic_rag_service
+from ..services.azure_ai_agents_service import azure_ai_agents_service
 from ..services.token_usage_tracker import token_tracker
+from ..services.azure_services import get_azure_service_manager
 
 router = APIRouter()
 
@@ -61,6 +63,15 @@ async def handle_rag_modes(request: ChatRequest, session_id: str, current_user: 
             if not agentic_rag_service.search_client:
                 await agentic_rag_service.initialize()
             
+            azure_service_manager = await get_azure_service_manager()
+            user_message = {
+                "role": "user",
+                "content": request.prompt,
+                "timestamp": datetime.utcnow().isoformat(),
+                "mode": request.mode
+            }
+            await azure_service_manager.save_session_history(session_id, user_message)
+            
             yield f"data: {json.dumps({'type': 'metadata', 'session_id': session_id, 'mode': request.mode, 'timestamp': datetime.utcnow().isoformat()})}\n\n"
             
             if request.mode == "agentic-rag":
@@ -102,6 +113,16 @@ async def handle_rag_modes(request: ChatRequest, session_id: str, current_user: 
                 'success': result.get('success', False)
             }
             yield f"data: {json.dumps({'type': 'metadata', 'processing': processing_metadata})}\n\n"
+            
+            assistant_message = {
+                "role": "assistant",
+                "content": answer,
+                "timestamp": datetime.utcnow().isoformat(),
+                "citations": citations,
+                "token_usage": token_usage,
+                "processing_metadata": processing_metadata
+            }
+            await azure_service_manager.save_session_history(session_id, assistant_message)
             
             yield f"data: {json.dumps({'type': 'done', 'session_id': session_id})}\n\n"
             
@@ -161,9 +182,9 @@ async def process_fast_rag(prompt: str, session_id: str) -> Dict[str, Any]:
             "citations": citations,
             "query_rewrites": [prompt],  # No rewrites in fast mode
             "token_usage": {
-                "prompt_tokens": len(prompt.split()),
-                "completion_tokens": len(answer.split()),
-                "total_tokens": len(prompt.split()) + len(answer.split())
+                "prompt_tokens": 0,  # Fast RAG doesn't use LLM, so no tokens
+                "completion_tokens": 0,
+                "total_tokens": 0
             },
             "processing_time_ms": 0,  # Will be calculated by caller
             "retrieval_method": "fast_rag",
@@ -180,38 +201,34 @@ async def process_fast_rag(prompt: str, session_id: str) -> Dict[str, Any]:
         }
 
 async def process_deep_research_rag(prompt: str, session_id: str, verification_level: str) -> Dict[str, Any]:
-    """Process Deep Research RAG mode with comprehensive verification"""
+    """Process Deep Research RAG mode using Azure AI Agents"""
     try:
-        agentic_result = await agentic_rag_service.process_question(
-            question=prompt,
-            rag_mode="deep-research-rag",
-            session_id=session_id
+        from ..services.token_usage_tracker import ServiceType, OperationType
+        
+        tracking_id = token_tracker.start_tracking(
+            session_id=session_id,
+            service_type=ServiceType.DEEP_RESEARCH_RAG,
+            operation_type=OperationType.ANSWER_GENERATION,
+            endpoint="/deep-research-rag",
+            rag_mode="deep-research-rag"
         )
         
-        verification_docs = await retriever.invoke(prompt)
+        agents_result = await azure_ai_agents_service.process_deep_research(
+            question=prompt,
+            session_id=session_id,
+            tracking_id=tracking_id
+        )
         
-        combined_citations = agentic_result.get("citations", [])
-        
-        for i, doc in enumerate(verification_docs[:2]):  # Add top 2 verification docs
-            combined_citations.append({
-                'id': str(len(combined_citations) + 1),
-                'title': doc.get('title', f'Verification Document {i + 1}'),
-                'content': doc.get('content', '')[:300],
-                'source': doc.get('source', ''),
-                'score': doc.get('score', 0.0),
-                'verification': True
-            })
-        
-        base_answer = agentic_result.get("answer", "")
-        verification_note = f"\n\n*This response has been enhanced with {verification_level} verification using additional sources.*"
+        base_answer = agents_result.get("answer", "")
+        verification_note = f"\n\n*This response has been generated using Azure AI Agents deep research with {verification_level} verification.*"
         
         return {
             "answer": base_answer + verification_note,
-            "citations": combined_citations,
-            "query_rewrites": agentic_result.get("query_rewrites", [prompt]),
-            "token_usage": agentic_result.get("token_usage", {}),
-            "processing_time_ms": agentic_result.get("processing_time_ms", 0),
-            "retrieval_method": "deep_research_rag",
+            "citations": agents_result.get("citations", []),
+            "query_rewrites": agents_result.get("query_rewrites", [prompt]),
+            "token_usage": agents_result.get("token_usage", {}),
+            "processing_time_ms": 0,  # Will be calculated by caller
+            "retrieval_method": "azure_ai_agents_deep_research",
             "verification_level": verification_level,
             "success": True
         }
@@ -224,3 +241,65 @@ async def process_deep_research_rag(prompt: str, session_id: str, verification_l
             "token_usage": {"total_tokens": 0, "error": str(e)},
             "success": False
         }
+
+@router.get("/chat/sessions/{session_id}/history")
+async def get_session_history(session_id: str, current_user: dict = Depends(get_current_user)):
+    """Get chat session history"""
+    try:
+        azure_service_manager = await get_azure_service_manager()
+        history = await azure_service_manager.get_session_history(session_id)
+        return {"session_id": session_id, "messages": history}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/chat/sessions/{session_id}")
+async def clear_session_history(session_id: str, current_user: dict = Depends(get_current_user)):
+    """Clear chat session history"""
+    try:
+        azure_service_manager = await get_azure_service_manager()
+        empty_session = {
+            "role": "system",
+            "content": "Session cleared",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        await azure_service_manager.save_session_history(f"{session_id}_cleared", empty_session)
+        return {"session_id": session_id, "status": "cleared"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/chat/sessions")
+async def list_user_sessions(current_user: dict = Depends(get_current_user)):
+    """List all sessions for the current user (placeholder implementation)"""
+    try:
+        return {"sessions": [], "message": "Session listing not yet implemented"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class FollowUpRequest(BaseModel):
+    original_question: str
+    answer: str
+    session_id: Optional[str] = None
+
+@router.post("/chat/follow-up-questions")
+async def generate_follow_up_questions(request: FollowUpRequest, current_user: dict = Depends(get_current_user)):
+    """Generate follow-up questions based on the original question and answer"""
+    try:
+        session_id = request.session_id or str(uuid.uuid4())
+        
+        if not azure_ai_agents_service.agents_client:
+            await azure_ai_agents_service.initialize()
+        
+        result = await azure_ai_agents_service.generate_follow_up_questions(
+            original_question=request.original_question,
+            answer=request.answer,
+            session_id=session_id
+        )
+        
+        return {
+            "session_id": session_id,
+            "follow_up_questions": result.get("follow_up_questions", []),
+            "token_usage": result.get("token_usage", {}),
+            "success": result.get("success", False)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

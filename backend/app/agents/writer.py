@@ -1,25 +1,27 @@
 from typing import List, Dict, AsyncIterator
 import re
 import asyncio
-from openai import AsyncAzureOpenAI
 from ..core.config import settings
+from ..services.azure_services import azure_service_manager
 
 class WriterAgent:
     def __init__(self, kernel):
         self.kernel = kernel
-        self.client = AsyncAzureOpenAI(
-            azure_endpoint=settings.openai_endpoint.split('/openai/deployments')[0],
-            api_key=settings.openai_key,
-            api_version="2025-01-01-preview"
-        )
+        self.client = None
+    
+    async def _ensure_client(self):
+        if self.client is None:
+            self.client = azure_service_manager.async_openai_client
     
     async def get_response(self, retrieved_docs: List[Dict], query: str) -> str:
+        await self._ensure_client()
         response_parts = []
         async for chunk in self.invoke_stream(retrieved_docs, query):
             response_parts.append(chunk)
         return ''.join(response_parts)
     
     async def invoke_stream(self, retrieved_docs: List[Dict], query: str) -> AsyncIterator[str]:
+        await self._ensure_client()
         try:
             context = self._format_context(retrieved_docs)
             

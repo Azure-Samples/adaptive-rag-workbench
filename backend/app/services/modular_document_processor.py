@@ -213,7 +213,7 @@ class ModularDocumentProcessor:
             return {
                 "company": "Unknown",
                 "document_type": "Document",
-                "year": 2024,
+                "year": "2024",
                 "filing_date": "2024-12-31",
                 "content_length": 0,
                 "word_count": 0
@@ -271,7 +271,7 @@ class ModularDocumentProcessor:
                 content=text,
                 source=metadata.get('filename', 'unknown'),
                 company=metadata.get('company', 'Unknown'),
-                year=metadata.get('year', 2024)
+                year=metadata.get('year', "2024")
             )
             
             # Enhance chunks with additional metadata
@@ -281,7 +281,7 @@ class ModularDocumentProcessor:
                 enhanced_chunk.update({
                     "document_type": metadata.get('document_type', 'Document'),
                     "chunk_index": i,
-                    "filing_date": metadata.get('filing_date', f"{metadata.get('year', 2024)}-12-31"),
+                    "filing_date": metadata.get('filing_date', f"{metadata.get('year', '2024')}-12-31"),
                     "content_length": len(chunk.get('content', '')),
                     "word_count": len(chunk.get('content', '').split()),
                     "credibility_score": metadata.get('credibility_score', 0.5),
@@ -400,11 +400,11 @@ class ModularDocumentProcessor:
         # Try to extract year from filename
         year_match = re.search(r'20\d{2}', filename)
         if year_match:
-            year = int(year_match.group())
+            year = str(year_match.group())
         else:
-            year = 2024
+            year = "2024"
         
         # Generate filing date
         filing_date = f"{year}-12-31"
         
-        return year, filing_date 
+        return year, filing_date      

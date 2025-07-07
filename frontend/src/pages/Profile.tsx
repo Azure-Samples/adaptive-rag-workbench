@@ -26,14 +26,14 @@ export function Profile() {
           <div className="flex items-center space-x-4 mb-6">
             <Avatar className="h-16 w-16">
                <AvatarFallback className={`text-white text-lg ${isDemoMode ? 'bg-orange-600' : 'bg-blue-600'}`}>
-                {isDemoMode ? <Play className="h-6 w-6" /> : (user.name?.charAt(0) || user.username?.charAt(0) || 'U')}
+                {isDemoMode ? <Play className="h-6 w-6" /> : (String(user.name || user.username || 'U').charAt(0))}
               </AvatarFallback>
             </Avatar>
             <div>
               <h1 className="text-2xl font-bold text-gray-800">
-                {user.name || 'User'}
+                {String(user.name || 'User')}
               </h1>
-              <p className="text-gray-600">{user.username}</p>
+              <p className="text-gray-600">{String(user.username || '')}</p>
               {isDemoMode ? (
                 <Badge className="bg-orange-600 text-white mt-1">
                   <Play className="h-3 w-3 mr-1" />
@@ -50,7 +50,7 @@ export function Profile() {
           <div className="space-y-4 mb-6">
             <div>
               <label className="text-sm font-medium text-gray-700">Email</label>
-              <p className="text-gray-900">{user.username}</p>
+              <p className="text-gray-900">{String(user.username || '')}</p>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700">Account Type</label>

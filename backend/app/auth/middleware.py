@@ -4,10 +4,11 @@ from fastapi import Request, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, jwk
 from typing import Optional
+from ..core.config import settings
 
-TENANT_ID = os.getenv("TENANT_ID")
-JWKS_URI = os.getenv("JWKS_URI")
-AUDIENCE = os.getenv("API_AUDIENCE")
+TENANT_ID = settings.tenant_id
+JWKS_URI = settings.jwks_uri
+AUDIENCE = settings.api_audience
 
 _keys = None
 async def _get_keys():
@@ -21,12 +22,18 @@ security = HTTPBearer()
 
 async def require_user(request: Request):
     header = request.headers.get("authorization", "")
+    print(f"Authorization header: {header}")
+    print(f"TENANT_ID: {TENANT_ID}")
+    print(f"JWKS_URI: {JWKS_URI}")
+    print(f"AUDIENCE: {AUDIENCE}")
+    
     try:
         scheme, token = header.split()
         assert scheme.lower() == "bearer"
         
         # Check for demo token
         if token == "demo-token":
+            print("Using demo token")
             return {
                 "preferred_username": "demo@demo.com",
                 "name": "Demo User",
@@ -50,9 +57,11 @@ async def require_user(request: Request):
 
 async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
     token = credentials.credentials
+    print(f"Verifying token: {token[:20]}..." if len(token) > 20 else f"Verifying token: {token}")
     
     # Check for demo token
     if token == "demo-token":
+        print("Using demo token in verify_token")
         return {
             "preferred_username": "demo@demo.com",
             "name": "Demo User",

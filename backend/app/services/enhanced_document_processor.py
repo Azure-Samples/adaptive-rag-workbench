@@ -107,7 +107,7 @@ class EnhancedDocumentProcessor:
                 await asyncio.sleep(0.1)
             except Exception as metadata_error:
                 logger.warning(f"[{filename}] Metadata extraction had issues: {str(metadata_error)}")
-                company, document_type, year = "Unknown", "Document", 2024
+                company, document_type, year = "Unknown", "Document", "2024"
                 update_status("METADATA", "Using default metadata due to extraction issues", 35)
             
             # Perform credibility assessment
@@ -377,23 +377,23 @@ class EnhancedDocumentProcessor:
         else:
             return 'Financial Document'
 
-    def _extract_year(self, filename: str, content: str = "") -> int:
+    def _extract_year(self, filename: str, content: str = "") -> str:
         """Extract year from filename or content"""
         import re
         
         # Try to extract year from filename
         year_match = re.search(r'20\d{2}', filename)
         if year_match:
-            return int(year_match.group())
+            return str(year_match.group())
         
         # Try to extract from content
         if content:
             year_matches = re.findall(r'20\d{2}', content[:1000])  # Check first 1000 chars
             if year_matches:
                 # Return the most recent year found
-                return max(int(year) for year in year_matches)
+                return str(max(int(year) for year in year_matches))
         
-        return 2024  # Default to current year
+        return "2024"  # Default to current year
 
     def _assess_document_credibility(self, doc_result: Dict[str, Any], filename: str) -> float:
         """
@@ -450,7 +450,7 @@ class EnhancedDocumentProcessor:
             logger.error(f"Error assessing credibility for {filename}: {str(e)}")
             return 0.5  # Default medium credibility
 
-    def _create_intelligent_chunks(self, doc_result: Dict[str, Any], filename: str, company: str, year: int) -> List[Dict[str, Any]]:
+    def _create_intelligent_chunks(self, doc_result: Dict[str, Any], filename: str, company: str, year: str) -> List[Dict[str, Any]]:
         """
         Create intelligent chunks using document structure awareness
         """
@@ -468,7 +468,7 @@ class EnhancedDocumentProcessor:
             # Fallback to basic chunking
             return self._create_chunks(doc_result, filename, company, year)
 
-    def _create_structure_aware_chunks(self, doc_result: Dict[str, Any], filename: str, company: str, year: int) -> List[Dict[str, Any]]:
+    def _create_structure_aware_chunks(self, doc_result: Dict[str, Any], filename: str, company: str, year: str) -> List[Dict[str, Any]]:
         """
         Create chunks that respect document structure (paragraphs, sections)
         """
@@ -533,7 +533,7 @@ class EnhancedDocumentProcessor:
         logger.info(f"[{filename}] Structure-aware chunking: {len(paragraphs)} paragraphs → {len(chunks)} chunks")
         return chunks
 
-    def _create_enhanced_chunk_dict(self, content: str, filename: str, company: str, year: int, index: int, structure_info: Dict = None) -> Dict[str, Any]:
+    def _create_enhanced_chunk_dict(self, content: str, filename: str, company: str, year: str, index: int, structure_info: Dict = None) -> Dict[str, Any]:
         """
         Create an enhanced chunk dictionary with additional metadata
         """
@@ -581,4 +581,4 @@ class EnhancedDocumentProcessor:
             "avg_word_count": sum(word_counts) / len(word_counts),
             "total_words": sum(word_counts),
             "has_structure_info": any(chunk.get("structure_info") for chunk in chunks)
-        } 
+        }    

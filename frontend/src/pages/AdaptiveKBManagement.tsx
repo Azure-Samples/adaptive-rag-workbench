@@ -35,7 +35,7 @@ export function AdaptiveKBManagement() {
   const [activeTab, setActiveTab] = useState<'upload' | 'search' | 'admin'>('upload');
   const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>([]);
   const [processingResult, setProcessingResult] = useState<ProcessingResult | null>(null);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [, setCurrentSessionId] = useState<string | null>(null);
   const [useProgressTracking, setUseProgressTracking] = useState(true);
   const [adminOperationStatus, setAdminOperationStatus] = useState<string>('');
   const [isAdminOperationInProgress, setIsAdminOperationInProgress] = useState(false);

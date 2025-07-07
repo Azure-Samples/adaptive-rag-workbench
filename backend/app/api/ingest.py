@@ -185,7 +185,7 @@ class ModularProcessor:
                     content=text,
                     source=filename,
                     company="Unknown",
-                    year=2024
+                    year="2024"
                 )
                 
                 self.logger.info(f"Using proper chunking, created {len(proper_chunks)} chunks")
@@ -207,7 +207,7 @@ class ModularProcessor:
                 "metadata": {
                     "company": "Unknown",
                     "document_type": "Document", 
-                    "year": 2024,
+                    "year": "2024",
                     "filename": filename,
                     "total_chunks": len(chunks),
                     "content_length": len(text),
@@ -227,7 +227,7 @@ class ModularProcessor:
                 "metadata": {
                     "company": "Unknown",
                     "document_type": "Document",
-                    "year": 2024,
+                    "year": "2024",
                     "filename": filename,
                     "total_chunks": 0,
                     "content_length": 0,
@@ -387,7 +387,7 @@ async def upload_file_with_progress(session_id: str, file: UploadFile = File(...
             await asyncio.sleep(0.1)
             status_callback({
                 "step": "RECEIVED",
-                "message": f"📄 File received: {filename} ({file_extension.upper()}) - validating...",
+                "message": f"📄 File received: {file.filename} ({file_extension.upper()}) - validating...",
                 "progress": 3
             })
             

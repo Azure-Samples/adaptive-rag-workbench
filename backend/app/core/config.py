@@ -4,8 +4,9 @@ from typing import Optional
 class Settings(BaseSettings):
     openai_endpoint: str = ""
     openai_key: str = ""
+    openai_api_version: str = "2025-04-01-preview"
     openai_chat_deployment: str = "gpt-4.1"
-    openai_embed_deployment: str = "text-embedding-3-small-2"
+    openai_embed_deployment: str = "text-embedding-3-small"
     
     search_endpoint: str = ""
     search_admin_key: str = ""
