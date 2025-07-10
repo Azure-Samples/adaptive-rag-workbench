@@ -14,11 +14,11 @@ class EmbeddingService:
     
     def __init__(self):
         self.client = AsyncAzureOpenAI(
-            api_key=settings.azure_openai_key,
+            api_key=settings.openai_key,
             api_version="2024-02-01",
-            azure_endpoint=settings.azure_openai_endpoint
+            azure_endpoint=settings.openai_endpoint
         )
-        self.embedding_model = settings.azure_openai_embedding_deployment or "text-embedding-3-small"
+        self.embedding_model = settings.openai_embed_deployment or "text-embedding-3-small"
         self.batch_size = 100  # Process embeddings in batches
         self.max_retries = 3
         

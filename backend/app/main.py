@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from .api.chat import router as chat_router
 from .api.ingest import router as ingest_router
 from .api.company_search import router as company_search_router
+from .api.sec_documents import router as sec_documents_router
 from .core.globals import initialize_kernel, set_agent_registry
 
 try:
@@ -29,7 +30,7 @@ app = FastAPI(title="Adaptive RAG Workbench", version="1.0.0", lifespan=lifespan
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=["http://localhost:3000", "http://localhost:5175"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,6 +39,7 @@ app.add_middleware(
 app.include_router(chat_router, prefix="/api")
 app.include_router(ingest_router, prefix="/api")
 app.include_router(company_search_router, prefix="/api/companies")
+app.include_router(sec_documents_router)
 
 @app.get("/healthz")
 async def healthz():
