@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { useTheme } from '../contexts/ThemeContext';
 import { 
   Loader2, 
   Send, 
@@ -57,6 +58,7 @@ export function MicrosoftInput({
   hideExampleQuestions = false
 }: MicrosoftInputProps) {
   const [selectedModel, setSelectedModel] = useState('gpt-4-1');
+  const { theme } = useTheme();
   const [showMoreModels, setShowMoreModels] = useState(false);
   const [sources, setSources] = useState<Source[]>([
     {
@@ -94,25 +96,25 @@ export function MicrosoftInput({
       id: 'fast-rag' as RAGMode,
       name: 'Fast',
       icon: Zap,
-      color: 'text-emerald-600',
-      bgColor: 'bg-emerald-50',
-      borderColor: 'border-emerald-200'
+      color: theme === 'customer' ? 'text-primary' : 'text-emerald-600',
+      bgColor: theme === 'customer' ? 'bg-primary/10' : 'bg-emerald-50',
+      borderColor: theme === 'customer' ? 'border-primary/20' : 'border-emerald-200'
     },
     {
       id: 'agentic-rag' as RAGMode,
       name: 'Agentic',
       icon: Brain,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      borderColor: 'border-blue-200'
+      color: theme === 'customer' ? 'text-primary' : 'text-primary',
+      bgColor: theme === 'customer' ? 'bg-primary/10' : 'bg-primary/10',
+      borderColor: theme === 'customer' ? 'border-primary/20' : 'border-primary/20'
     },
     {
       id: 'deep-research-rag' as RAGMode,
       name: 'Deep Research',
       icon: Microscope,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      borderColor: 'border-purple-200'
+      color: theme === 'customer' ? 'text-primary' : 'text-purple-600',
+      bgColor: theme === 'customer' ? 'bg-primary/10' : 'bg-purple-50',
+      borderColor: theme === 'customer' ? 'border-primary/20' : 'border-purple-200'
     }
   ];
 
@@ -172,14 +174,26 @@ export function MicrosoftInput({
   return (
     <div className="w-full max-w-4xl mx-auto space-y-4">
       {/* Main Input Container */}
-      <div className="relative bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200">
+      <div className={`relative rounded-2xl border shadow-sm hover:shadow-md transition-all duration-200 ${
+        theme === 'dark'
+          ? 'bg-gray-800 border-gray-700'
+          : theme === 'customer'
+          ? 'bg-white border-primary/20'
+          : 'bg-white border-gray-200'
+      }`}>
         <form onSubmit={handleSubmit}>
           {/* Textarea */}
           <Textarea
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={placeholder}
-            className="w-full min-h-[120px] p-4 pb-16 resize-none border-0 focus:ring-0 rounded-2xl text-base placeholder:text-gray-500 bg-transparent"
+            className={`w-full min-h-[120px] p-4 pb-16 resize-none border-0 focus:ring-0 rounded-2xl text-base bg-transparent ${
+              theme === 'dark'
+                ? 'text-white placeholder:text-gray-400'
+                : theme === 'customer'
+                ? 'text-gray-900 placeholder:text-gray-500'
+                : 'text-gray-900 placeholder:text-gray-500'
+            }`}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -189,7 +203,13 @@ export function MicrosoftInput({
           />
 
           {/* Bottom Controls Bar */}
-          <div className="absolute bottom-0 left-0 right-0 p-3 flex items-center justify-between border-t border-gray-100">
+          <div className={`absolute bottom-0 left-0 right-0 p-3 flex items-center justify-between border-t ${
+            theme === 'dark'
+              ? 'border-gray-700'
+              : theme === 'customer'
+              ? 'border-primary/20'
+              : 'border-gray-100'
+          }`}>
             {/* Left Side - RAG Mode Buttons */}
             <div className="flex items-center gap-1">
               {ragModes.map((mode) => {
@@ -203,6 +223,8 @@ export function MicrosoftInput({
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                       isSelected
                         ? `${mode.color} ${mode.bgColor} ${mode.borderColor} border`
+                        : theme === 'dark'
+                        ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                     }`}
                   >
@@ -226,23 +248,42 @@ export function MicrosoftInput({
                     }
                   }}
                 >
-                  <SelectTrigger className="w-auto min-w-[140px] h-8 px-3 text-sm font-medium border border-gray-300 rounded-md transition-colors duration-200 focus:ring-1 focus:ring-gray-400 focus:ring-offset-1 bg-white">
+                  <SelectTrigger className={`w-auto min-w-[140px] h-8 px-3 text-sm font-medium border rounded-md transition-colors duration-200 focus:ring-1 focus:ring-offset-1 ${
+                    theme === 'dark'
+                      ? 'border-gray-600 bg-gray-800 text-white focus:ring-gray-400'
+                      : theme === 'customer'
+                      ? 'border-primary/30 bg-white text-gray-900 focus:ring-primary/40'
+                      : 'border-gray-300 bg-white text-gray-900 focus:ring-gray-400'
+                  }`}>
                     <div className="flex items-center justify-between w-full">
                       <SelectValue />
                       <ChevronDown className="h-3.5 w-3.5 ml-1" />
                     </div>
                   </SelectTrigger>
-                  <SelectContent className="w-64 p-0 border border-gray-300 shadow-md">
+                  <SelectContent className={`w-64 p-0 border shadow-md ${
+                    theme === 'dark'
+                      ? 'border-gray-600 bg-gray-800'
+                      : theme === 'customer'
+                      ? 'border-primary/30 bg-white'
+                      : 'border-gray-300 bg-white'
+                  }`}>
                     <div className="py-1 px-2">
                       {primaryModels.map((model) => (
-                        <SelectItem key={model.id} value={model.id} className="py-1.5 px-3 hover:bg-gray-100 rounded-md cursor-pointer">
+                        <SelectItem key={model.id} value={model.id} className={`py-1.5 px-3 rounded-md cursor-pointer ${
+                          theme === 'dark'
+                            ? 'hover:bg-gray-700 text-white'
+                            : 'hover:bg-gray-100 text-gray-900'
+                        }`}>
                           <div className="flex items-center justify-between w-full">
                             <span className="font-medium text-sm">{model.name}</span>
                           </div>
                         </SelectItem>
-                      ))}
-                      <div 
-                        className="relative py-1.5 px-3 hover:bg-gray-100 rounded-md cursor-pointer border-t border-gray-200 mt-1 group"
+                      ))}                        <div 
+                        className={`relative py-1.5 px-3 rounded-md cursor-pointer border-t mt-1 group ${
+                          theme === 'dark'
+                            ? 'hover:bg-gray-700 border-gray-600'
+                            : 'hover:bg-gray-100 border-gray-200'
+                        }`}
                         onMouseEnter={() => {
                           console.log('Mouse entered More models');
                           setShowMoreModels(true);
@@ -253,14 +294,20 @@ export function MicrosoftInput({
                         }}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-700">More models</span>
+                          <span className={`text-sm font-medium ${
+                            theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
+                          }`}>More models</span>
                           <ChevronRight className="h-3.5 w-3.5" />
                         </div>
                         
                         {/* Submenu for additional models */}
                         {showMoreModels && (
                           <div 
-                            className="absolute left-full top-0 ml-1 w-64 bg-white border border-gray-300 shadow-lg rounded-md z-[60]"
+                            className={`absolute left-full top-0 ml-1 w-64 border shadow-lg rounded-md z-[60] ${
+                              theme === 'dark'
+                                ? 'bg-gray-800 border-gray-600'
+                                : 'bg-white border-gray-300'
+                            }`}
                             onMouseEnter={() => {
                               console.log('Mouse entered submenu');
                               setShowMoreModels(true);
@@ -274,7 +321,11 @@ export function MicrosoftInput({
                               {additionalModels.map((model) => (
                                 <div
                                   key={model.id}
-                                  className="py-1.5 px-3 hover:bg-gray-100 rounded-md cursor-pointer"
+                                  className={`py-1.5 px-3 rounded-md cursor-pointer ${
+                                    theme === 'dark'
+                                      ? 'hover:bg-gray-700 text-white'
+                                      : 'hover:bg-gray-100 text-gray-900'
+                                  }`}
                                   onClick={() => {
                                     setSelectedModel(model.id);
                                     setShowMoreModels(false);
@@ -296,31 +347,53 @@ export function MicrosoftInput({
               {showSourceSelector && (
                 <div className="relative">
                   <Select>
-                    <SelectTrigger className="w-24 h-8 text-xs border-gray-200 hover:border-gray-300">
+                    <SelectTrigger className={`w-24 h-8 text-xs border hover:border-gray-300 ${
+                      theme === 'dark'
+                        ? 'border-gray-600 bg-gray-800 text-white'
+                        : 'border-gray-200 bg-white text-gray-900'
+                    }`}>
                       <span className="text-xs">Sources</span>
                       <ChevronDown className="h-3 w-3" />
                     </SelectTrigger>
-                    <SelectContent className="w-64">
+                    <SelectContent className={`w-64 ${
+                      theme === 'dark'
+                        ? 'bg-gray-800 border-gray-600'
+                        : 'bg-white border-gray-300'
+                    }`}>
                       <div className="p-2 space-y-2">
-                        <div className="text-xs font-medium text-gray-700 mb-2">Set sources for search</div>
+                        <div className={`text-xs font-medium mb-2 ${
+                          theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
+                        }`}>Set sources for search</div>
                         {sources.map((source) => {
                           const Icon = source.icon;
                           return (
                             <div
                               key={source.id}
-                              className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer"
+                              className={`flex items-center justify-between p-2 rounded-lg cursor-pointer ${
+                                theme === 'dark'
+                                  ? 'hover:bg-gray-700'
+                                  : 'hover:bg-gray-50'
+                              }`}
                               onClick={() => toggleSource(source.id)}
                             >
                               <div className="flex items-center gap-2">
-                                <Icon className="h-4 w-4 text-gray-600" />
+                                <Icon className={`h-4 w-4 ${
+                                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                                }`} />
                                 <div>
-                                  <div className="text-sm font-medium">{source.name}</div>
-                                  <div className="text-xs text-gray-500">{source.description}</div>
+                                  <div className={`text-sm font-medium ${
+                                    theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                  }`}>{source.name}</div>
+                                  <div className={`text-xs ${
+                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                  }`}>{source.description}</div>
                                 </div>
                               </div>
                               <div className={`w-4 h-4 rounded-full border-2 ${
                                 source.enabled 
-                                  ? 'bg-blue-500 border-blue-500' 
+                                  ? 'bg-primary border-primary' 
+                                  : theme === 'dark'
+                                  ? 'border-gray-500'
                                   : 'border-gray-300'
                               }`}>
                                 {source.enabled && (
@@ -341,7 +414,11 @@ export function MicrosoftInput({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                className={`h-8 w-8 p-0 ${
+                  theme === 'dark'
+                    ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                }`}
                 title="Voice dictation (coming soon)"
               >
                 <Mic className="h-4 w-4" />
@@ -351,7 +428,7 @@ export function MicrosoftInput({
               <Button
                 type="submit"
                 disabled={isLoading || !query.trim()}
-                className="h-8 px-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="h-8 px-3 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -367,7 +444,9 @@ export function MicrosoftInput({
       {/* Dynamic Example Queries - Hidden during loading/generation */}
       {currentExampleQueries.length > 0 && !hideExampleQuestions && !isLoading && (
         <div className="space-y-3">
-          <div className="text-sm text-gray-600">
+          <div className={`text-sm ${
+            theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+          }`}>
             Try asking about Microsoft:
           </div>
           <div className="grid gap-2">
@@ -375,10 +454,16 @@ export function MicrosoftInput({
               <button
                 key={idx}
                 onClick={() => handleExampleClick(example)}
-                className="text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 transition-all duration-200 hover:shadow-sm text-sm text-gray-700 hover:text-gray-900"
+                className={`text-left p-3 rounded-xl border transition-all duration-200 hover:shadow-sm text-sm ${
+                  theme === 'dark'
+                    ? 'bg-gray-800 hover:bg-gray-700 border-gray-600 text-gray-300 hover:text-gray-100'
+                    : 'bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-700 hover:text-gray-900'
+                }`}
               >
                 <span className="flex items-start gap-2">
-                  <span className="text-gray-400 mt-0.5">💡</span>
+                  <span className={`${
+                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                  } mt-0.5`}>💡</span>
                   <span>"{example}"</span>
                 </span>
               </button>

@@ -5,6 +5,7 @@ import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { CompanySearch } from '../components/CompanySearch';
 import { Upload, FileText, RefreshCw, Database, TrendingUp, Building2, Search, CheckCircle, AlertCircle, Clock, Zap, Settings, Trash2, ShieldAlert } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface ProcessingStep {
   id: string;
@@ -25,6 +26,8 @@ interface ProcessingResult {
 }
 
 export function AdaptiveKBManagement() {
+  const { theme } = useTheme();
+  
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
   const [indexStats, setIndexStats] = useState<{
@@ -388,16 +391,36 @@ export function AdaptiveKBManagement() {
 
   return (
     <ChatLayout>
-      <div className="flex-1 overflow-y-auto p-6" style={{ height: 'calc(100vh - 200px)' }}>
+      <div className={`flex-1 overflow-y-auto p-6 ${
+        theme === 'dark' 
+          ? 'bg-gray-900' 
+          : theme === 'customer' 
+            ? 'bg-customer-50' 
+            : 'bg-gray-50'
+      }`} style={{ height: 'calc(100vh - 200px)' }}>
         <div className="max-w-6xl mx-auto space-y-8">
           {/* Tab Navigation */}
-          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
+          <div className={`flex space-x-1 p-1 rounded-lg w-fit ${
+            theme === 'dark' 
+              ? 'bg-gray-800' 
+              : theme === 'customer' 
+                ? 'bg-customer-100' 
+                : 'bg-gray-100'
+          }`}>
             <button
               onClick={() => setActiveTab('upload')}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeTab === 'upload'
-                  ? 'bg-white text-microsoft-gray shadow-sm'
-                  : 'text-gray-600 hover:text-microsoft-gray'
+                  ? theme === 'dark' 
+                    ? 'bg-gray-700 text-white shadow-sm' 
+                    : theme === 'customer' 
+                      ? 'bg-customer-500 text-white shadow-sm' 
+                      : 'bg-white text-microsoft-gray shadow-sm'
+                  : theme === 'dark' 
+                    ? 'text-gray-300 hover:text-white' 
+                    : theme === 'customer' 
+                      ? 'text-customer-600 hover:text-customer-800' 
+                      : 'text-gray-600 hover:text-microsoft-gray'
               }`}
             >
               <Upload className="h-4 w-4 mr-2 inline" />
@@ -407,8 +430,16 @@ export function AdaptiveKBManagement() {
               onClick={() => setActiveTab('search')}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeTab === 'search'
-                  ? 'bg-white text-microsoft-gray shadow-sm'
-                  : 'text-gray-600 hover:text-microsoft-gray'
+                  ? theme === 'dark' 
+                    ? 'bg-gray-700 text-white shadow-sm' 
+                    : theme === 'customer' 
+                      ? 'bg-customer-500 text-white shadow-sm' 
+                      : 'bg-white text-microsoft-gray shadow-sm'
+                  : theme === 'dark' 
+                    ? 'text-gray-300 hover:text-white' 
+                    : theme === 'customer' 
+                      ? 'text-customer-600 hover:text-customer-800' 
+                      : 'text-gray-600 hover:text-microsoft-gray'
               }`}
             >
               <Search className="h-4 w-4 mr-2 inline" />
@@ -418,8 +449,16 @@ export function AdaptiveKBManagement() {
               onClick={() => setActiveTab('admin')}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeTab === 'admin'
-                  ? 'bg-white text-microsoft-gray shadow-sm'
-                  : 'text-gray-600 hover:text-microsoft-gray'
+                  ? theme === 'dark' 
+                    ? 'bg-gray-700 text-white shadow-sm' 
+                    : theme === 'customer' 
+                      ? 'bg-customer-500 text-white shadow-sm' 
+                      : 'bg-white text-microsoft-gray shadow-sm'
+                  : theme === 'dark' 
+                    ? 'text-gray-300 hover:text-white' 
+                    : theme === 'customer' 
+                      ? 'text-customer-600 hover:text-customer-800' 
+                      : 'text-gray-600 hover:text-microsoft-gray'
               }`}
             >
               <Settings className="h-4 w-4 mr-2 inline" />
@@ -429,18 +468,48 @@ export function AdaptiveKBManagement() {
           
           {activeTab === 'upload' && (
             <>
-              <Card className="p-8 bg-white/80 backdrop-blur-sm border-gray-200 shadow-lg">
+              <Card className={`p-8 border shadow-xl ${
+                  theme === 'dark' 
+                    ? 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700' 
+                    : theme === 'customer' 
+                      ? 'bg-gradient-to-br from-customer-50 to-customer-100 border-customer-200' 
+                      : 'bg-gradient-to-br from-white to-gray-50 border-gray-200'
+                }`}>
                 <div className="flex items-center space-x-3 mb-6">
-                  <div className="w-10 h-10 bg-microsoft-purple rounded-full flex items-center justify-center">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    theme === 'dark' 
+                      ? 'bg-gray-600' 
+                      : theme === 'customer' 
+                        ? 'bg-customer-500' 
+                        : 'bg-microsoft-purple'
+                  }`}>
                     <Upload className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold text-microsoft-gray">Upload New Documents</h3>
-                    <p className="text-gray-600">Upload new 10-K filings or other financial documents to automatically update the knowledge base.</p>
+                    <h3 className={`text-xl font-semibold ${
+                      theme === 'dark' 
+                        ? 'text-white' 
+                        : theme === 'customer' 
+                          ? 'text-customer-900' 
+                          : 'text-microsoft-gray'
+                    }`}>Upload New Documents</h3>
+                    <p className={`${
+                      theme === 'dark' 
+                        ? 'text-gray-300' 
+                        : theme === 'customer' 
+                          ? 'text-customer-700' 
+                          : 'text-gray-600'
+                    }`}>Upload new 10-K filings or other financial documents to automatically update the knowledge base.</p>
                   </div>
                 </div>
 
-            <div className="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-microsoft-purple transition-colors">
+            <div className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
+              theme === 'dark' 
+                ? 'border-gray-600 hover:border-gray-500' 
+                : theme === 'customer' 
+                  ? 'border-customer-300 hover:border-customer-500' 
+                  : 'border-gray-300 hover:border-microsoft-purple'
+            }`}>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -450,15 +519,33 @@ export function AdaptiveKBManagement() {
               />
 
               <div className="space-y-6">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
-                  <FileText className="h-8 w-8 text-gray-400" />
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto ${
+                  theme === 'dark' 
+                    ? 'bg-gray-700' 
+                    : theme === 'customer' 
+                      ? 'bg-customer-100' 
+                      : 'bg-gray-100'
+                }`}>
+                  <FileText className={`h-8 w-8 ${
+                    theme === 'dark' 
+                      ? 'text-gray-400' 
+                      : theme === 'customer' 
+                        ? 'text-customer-500' 
+                        : 'text-gray-400'
+                  }`} />
                 </div>
 
                 <div>
                   <Button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
-                    className="bg-microsoft-purple hover:bg-purple-700 text-white px-8 py-3"
+                    className={`px-8 py-3 text-white ${
+                      theme === 'dark' 
+                        ? 'bg-gray-600 hover:bg-gray-700' 
+                        : theme === 'customer' 
+                          ? 'bg-customer-500 hover:bg-customer-600' 
+                          : 'bg-microsoft-purple hover:bg-purple-700'
+                    }`}
                   >
                     {isUploading ? (
                       <>
@@ -472,7 +559,13 @@ export function AdaptiveKBManagement() {
                       </>
                     )}
                   </Button>
-                  <p className="text-sm text-gray-500 mt-3">
+                  <p className={`text-sm mt-3 ${
+                    theme === 'dark' 
+                      ? 'text-gray-400' 
+                      : theme === 'customer' 
+                        ? 'text-customer-600' 
+                        : 'text-gray-500'
+                  }`}>
                     Supports PDF, HTML files • Maximum size: 50MB
                   </p>
                 </div>
@@ -486,16 +579,40 @@ export function AdaptiveKBManagement() {
                   type="checkbox"
                   checked={useProgressTracking}
                   onChange={(e) => setUseProgressTracking(e.target.checked)}
-                  className="rounded border-gray-300 text-microsoft-purple focus:ring-microsoft-purple"
+                  className={`rounded focus:ring-2 ${
+                    theme === 'dark' 
+                      ? 'border-gray-600 bg-gray-700 text-gray-500 focus:ring-gray-500' 
+                      : theme === 'customer' 
+                        ? 'border-customer-300 text-customer-500 focus:ring-customer-500' 
+                        : 'border-gray-300 text-microsoft-purple focus:ring-microsoft-purple'
+                  }`}
                 />
-                <span className="text-sm text-gray-600">Enable real-time progress tracking</span>
+                <span className={`text-sm ${
+                  theme === 'dark' 
+                    ? 'text-gray-300' 
+                    : theme === 'customer' 
+                      ? 'text-customer-700' 
+                      : 'text-gray-600'
+                }`}>Enable real-time progress tracking</span>
               </label>
             </div>
 
             {/* Debug Tools */}
             {process.env.NODE_ENV === 'development' && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Debug Tools</h4>
+              <div className={`mt-4 p-4 rounded-lg border ${
+                theme === 'dark' 
+                  ? 'bg-gray-800 border-gray-700' 
+                  : theme === 'customer' 
+                    ? 'bg-customer-50 border-customer-200' 
+                    : 'bg-gray-50 border-gray-200'
+              }`}>
+                <h4 className={`text-sm font-medium mb-2 ${
+                  theme === 'dark' 
+                    ? 'text-gray-200' 
+                    : theme === 'customer' 
+                      ? 'text-customer-800' 
+                      : 'text-gray-700'
+                }`}>Debug Tools</h4>
                 <div className="flex space-x-2">
                   <Button
                     onClick={async () => {
@@ -545,36 +662,90 @@ export function AdaptiveKBManagement() {
             {/* Processing Steps Display */}
             {isUploading && useProgressTracking && processingSteps.length > 0 && (
               <div className="mt-6 space-y-4">
-                <h4 className="font-semibold text-microsoft-gray flex items-center">
-                  <Clock className="h-5 w-5 mr-2 text-microsoft-blue" />
+                <h4 className={`font-semibold flex items-center ${
+                  theme === 'dark' 
+                    ? 'text-white' 
+                    : theme === 'customer' 
+                      ? 'text-customer-900' 
+                      : 'text-microsoft-gray'
+                }`}>
+                  <Clock className={`h-5 w-5 mr-2 ${
+                    theme === 'dark' 
+                      ? 'text-gray-400' 
+                      : theme === 'customer' 
+                        ? 'text-customer-500' 
+                        : 'text-microsoft-blue'
+                  }`} />
                   Processing Steps
                 </h4>
                 <div className="space-y-3">
                   {processingSteps.map((step) => (
-                    <div key={step.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <div key={step.id} className={`flex items-center space-x-3 p-3 rounded-lg ${
+                      theme === 'dark' 
+                        ? 'bg-gray-800' 
+                        : theme === 'customer' 
+                          ? 'bg-customer-50' 
+                          : 'bg-gray-50'
+                    }`}>
                       <div className="flex-shrink-0">
                         {step.status === 'completed' && (
                           <CheckCircle className="h-5 w-5 text-green-500" />
                         )}
                         {step.status === 'processing' && (
-                          <RefreshCw className="h-5 w-5 text-microsoft-blue animate-spin" />
+                          <RefreshCw className={`h-5 w-5 animate-spin ${
+                            theme === 'dark' 
+                              ? 'text-gray-400' 
+                              : theme === 'customer' 
+                                ? 'text-customer-500' 
+                                : 'text-microsoft-blue'
+                          }`} />
                         )}
                         {step.status === 'error' && (
                           <AlertCircle className="h-5 w-5 text-red-500" />
                         )}
                         {step.status === 'pending' && (
-                          <div className="h-5 w-5 rounded-full border-2 border-gray-300" />
+                          <div className={`h-5 w-5 rounded-full border-2 ${
+                            theme === 'dark' 
+                              ? 'border-gray-600' 
+                              : theme === 'customer' 
+                                ? 'border-customer-300' 
+                                : 'border-gray-300'
+                          }`} />
                         )}
                       </div>
                       <div className="flex-1">
-                        <div className="font-medium text-microsoft-gray">{step.title}</div>
-                        <div className="text-sm text-gray-600">
+                        <div className={`font-medium ${
+                          theme === 'dark' 
+                            ? 'text-white' 
+                            : theme === 'customer' 
+                              ? 'text-customer-900' 
+                              : 'text-microsoft-gray'
+                        }`}>{step.title}</div>
+                        <div className={`text-sm ${
+                          theme === 'dark' 
+                            ? 'text-gray-300' 
+                            : theme === 'customer' 
+                              ? 'text-customer-700' 
+                              : 'text-gray-600'
+                        }`}>
                           {step.message || step.description}
                         </div>
                         {step.progress !== undefined && step.status === 'processing' && (
-                          <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                          <div className={`mt-2 w-full rounded-full h-2 ${
+                            theme === 'dark' 
+                              ? 'bg-gray-700' 
+                              : theme === 'customer' 
+                                ? 'bg-customer-200' 
+                                : 'bg-gray-200'
+                          }`}>
                             <div 
-                              className="bg-microsoft-blue h-2 rounded-full transition-all duration-300"
+                              className={`h-2 rounded-full transition-all duration-300 ${
+                                theme === 'dark' 
+                                  ? 'bg-gray-400' 
+                                  : theme === 'customer' 
+                                    ? 'bg-customer-500' 
+                                    : 'bg-microsoft-blue'
+                              }`}
                               style={{ width: `${step.progress}%` }}
                             />
                           </div>
@@ -588,53 +759,191 @@ export function AdaptiveKBManagement() {
 
             {/* Processing Results */}
             {processingResult && (
-              <div className="mt-6 p-6 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg">
-                <h4 className="font-semibold text-microsoft-gray mb-4 flex items-center">
-                  <Zap className="h-5 w-5 mr-2 text-microsoft-green" />
+              <div className={`mt-6 p-6 rounded-lg border ${
+                theme === 'dark' 
+                  ? 'bg-gradient-to-r from-gray-800 to-gray-700 border-gray-600' 
+                  : theme === 'customer' 
+                    ? 'bg-gradient-to-r from-customer-50 to-customer-100 border-customer-300' 
+                    : 'bg-gradient-to-r from-green-50 to-primary/10 border-green-200'
+              }`}>
+                <h4 className={`font-semibold mb-4 flex items-center ${
+                  theme === 'dark' 
+                    ? 'text-white' 
+                    : theme === 'customer' 
+                      ? 'text-customer-900' 
+                      : 'text-microsoft-gray'
+                }`}>
+                  <Zap className={`h-5 w-5 mr-2 ${
+                    theme === 'dark' 
+                      ? 'text-gray-400' 
+                      : theme === 'customer' 
+                        ? 'text-customer-500' 
+                        : 'text-microsoft-green'
+                  }`} />
                   Processing Results
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="bg-white p-4 rounded-lg border">
-                    <div className="text-2xl font-bold text-microsoft-blue">
+                  <div className={`p-4 rounded-lg border ${
+                    theme === 'dark' 
+                      ? 'bg-gray-700 border-gray-600' 
+                      : theme === 'customer' 
+                        ? 'bg-customer-100 border-customer-300' 
+                        : 'bg-white border-gray-200'
+                  }`}>
+                    <div className={`text-2xl font-bold ${
+                      theme === 'dark' 
+                        ? 'text-gray-300' 
+                        : theme === 'customer' 
+                          ? 'text-customer-600' 
+                          : 'text-microsoft-blue'
+                    }`}>
                       {processingResult.chunks_created}
                     </div>
-                    <div className="text-sm text-gray-600">Chunks Created</div>
+                    <div className={`text-sm font-medium ${
+                      theme === 'dark' 
+                        ? 'text-gray-400' 
+                        : theme === 'customer' 
+                          ? 'text-customer-700' 
+                          : 'text-primary'
+                    }`}>Chunks Created</div>
                   </div>
-                  <div className="bg-white p-4 rounded-lg border">
-                    <div className="text-2xl font-bold text-microsoft-green">
+                  <div className={`p-4 rounded-lg border ${
+                    theme === 'dark' 
+                      ? 'bg-gray-700 border-gray-600' 
+                      : theme === 'customer' 
+                        ? 'bg-customer-100 border-customer-300' 
+                        : 'bg-white border-gray-200'
+                  }`}>
+                    <div className={`text-2xl font-bold ${
+                      theme === 'dark' 
+                        ? 'text-gray-300' 
+                        : theme === 'customer' 
+                          ? 'text-customer-600' 
+                          : 'text-microsoft-green'
+                    }`}>
                       {processingResult.company}
                     </div>
-                    <div className="text-sm text-gray-600">Company</div>
+                    <div className={`text-sm font-medium ${
+                      theme === 'dark' 
+                        ? 'text-gray-400' 
+                        : theme === 'customer' 
+                          ? 'text-customer-700' 
+                          : 'text-green-700'
+                    }`}>Company</div>
                   </div>
-                  <div className="bg-white p-4 rounded-lg border">
-                    <div className="text-2xl font-bold text-microsoft-purple">
+                  <div className={`p-4 rounded-lg border ${
+                    theme === 'dark' 
+                      ? 'bg-gray-700 border-gray-600' 
+                      : theme === 'customer' 
+                        ? 'bg-customer-100 border-customer-300' 
+                        : 'bg-white border-gray-200'
+                  }`}>
+                    <div className={`text-2xl font-bold ${
+                      theme === 'dark' 
+                        ? 'text-gray-300' 
+                        : theme === 'customer' 
+                          ? 'text-customer-600' 
+                          : 'text-microsoft-purple'
+                    }`}>
                       {processingResult.processing_time.toFixed(1)}s
                     </div>
-                    <div className="text-sm text-gray-600">Processing Time</div>
+                    <div className={`text-sm font-medium ${
+                      theme === 'dark' 
+                        ? 'text-gray-400' 
+                        : theme === 'customer' 
+                          ? 'text-customer-700' 
+                          : 'text-purple-700'
+                    }`}>Processing Time</div>
                   </div>
-                  <div className="bg-white p-4 rounded-lg border">
-                    <div className="text-2xl font-bold text-microsoft-orange">
+                  <div className={`p-4 rounded-lg border ${
+                    theme === 'dark' 
+                      ? 'bg-gray-700 border-gray-600' 
+                      : theme === 'customer' 
+                        ? 'bg-customer-100 border-customer-300' 
+                        : 'bg-white border-gray-200'
+                  }`}>
+                    <div className={`text-2xl font-bold ${
+                      theme === 'dark' 
+                        ? 'text-gray-300' 
+                        : theme === 'customer' 
+                          ? 'text-customer-600' 
+                          : 'text-microsoft-orange'
+                    }`}>
                       {(processingResult.credibility_score * 100).toFixed(0)}%
                     </div>
-                    <div className="text-sm text-gray-600">Credibility Score</div>
+                    <div className={`text-sm font-medium ${
+                      theme === 'dark' 
+                        ? 'text-gray-400' 
+                        : theme === 'customer' 
+                          ? 'text-customer-700' 
+                          : 'text-orange-700'
+                    }`}>Credibility Score</div>
                   </div>
                 </div>
                 
                 {processingResult.metadata && (
-                  <div className="mt-4 p-4 bg-white rounded-lg border">
-                    <h5 className="font-medium text-microsoft-gray mb-2">Document Metadata</h5>
+                  <div className={`mt-4 p-4 rounded-lg border ${
+                    theme === 'dark' 
+                      ? 'bg-gray-700 border-gray-600' 
+                      : theme === 'customer' 
+                        ? 'bg-customer-100 border-customer-300' 
+                        : 'bg-white border-gray-200'
+                  }`}>
+                    <h5 className={`font-medium mb-2 ${
+                      theme === 'dark' 
+                        ? 'text-white' 
+                        : theme === 'customer' 
+                          ? 'text-customer-900' 
+                          : 'text-microsoft-gray'
+                    }`}>Document Metadata</h5>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
                       <div>
-                        <span className="text-gray-600">Type:</span>
-                        <span className="ml-2 font-medium">{processingResult.document_type}</span>
+                        <span className={`${
+                          theme === 'dark' 
+                            ? 'text-gray-300' 
+                            : theme === 'customer' 
+                              ? 'text-customer-700' 
+                              : 'text-gray-600'
+                        }`}>Type:</span>
+                        <span className={`ml-2 font-medium ${
+                          theme === 'dark' 
+                            ? 'text-gray-200' 
+                            : theme === 'customer' 
+                              ? 'text-customer-800' 
+                              : 'text-gray-900'
+                        }`}>{processingResult.document_type}</span>
                       </div>
                       <div>
-                        <span className="text-gray-600">Content Length:</span>
-                        <span className="ml-2 font-medium">{processingResult.metadata.content_length?.toLocaleString()}</span>
+                        <span className={`${
+                          theme === 'dark' 
+                            ? 'text-gray-300' 
+                            : theme === 'customer' 
+                              ? 'text-customer-700' 
+                              : 'text-gray-600'
+                        }`}>Content Length:</span>
+                        <span className={`ml-2 font-medium ${
+                          theme === 'dark' 
+                            ? 'text-gray-200' 
+                            : theme === 'customer' 
+                              ? 'text-customer-800' 
+                              : 'text-gray-900'
+                        }`}>{processingResult.metadata.content_length?.toLocaleString()}</span>
                       </div>
                       <div>
-                        <span className="text-gray-600">File Size:</span>
-                        <span className="ml-2 font-medium">{(processingResult.metadata.file_size / 1024).toFixed(1)}KB</span>
+                        <span className={`${
+                          theme === 'dark' 
+                            ? 'text-gray-300' 
+                            : theme === 'customer' 
+                              ? 'text-customer-700' 
+                              : 'text-gray-600'
+                        }`}>File Size:</span>
+                        <span className={`ml-2 font-medium ${
+                          theme === 'dark' 
+                            ? 'text-gray-200' 
+                            : theme === 'customer' 
+                              ? 'text-customer-800' 
+                              : 'text-gray-900'
+                        }`}>{(processingResult.metadata.file_size / 1024).toFixed(1)}KB</span>
                       </div>
                     </div>
                   </div>
@@ -660,22 +969,52 @@ export function AdaptiveKBManagement() {
             )}
           </Card>
 
-          <Card className="p-8 bg-white/80 backdrop-blur-sm border-gray-200 shadow-lg">
+          <Card className={`p-8 border shadow-xl ${
+              theme === 'dark' 
+                ? 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700' 
+                : theme === 'customer' 
+                  ? 'bg-gradient-to-br from-customer-50 to-customer-100 border-customer-200' 
+                  : 'bg-gradient-to-br from-white to-gray-50 border-gray-200'
+            }`}>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-microsoft-blue rounded-full flex items-center justify-center">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  theme === 'dark' 
+                    ? 'bg-gray-600' 
+                    : theme === 'customer' 
+                      ? 'bg-customer-500' 
+                      : 'bg-microsoft-blue'
+                }`}>
                   <Database className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold text-microsoft-gray">Knowledge Base Statistics</h3>
-                  <p className="text-gray-600">Real-time insights into your document repository</p>
+                  <h3 className={`text-xl font-semibold ${
+                    theme === 'dark' 
+                      ? 'text-white' 
+                      : theme === 'customer' 
+                        ? 'text-customer-900' 
+                        : 'text-microsoft-gray'
+                  }`}>Knowledge Base Statistics</h3>
+                  <p className={`${
+                    theme === 'dark' 
+                      ? 'text-gray-300' 
+                      : theme === 'customer' 
+                        ? 'text-customer-700' 
+                        : 'text-gray-600'
+                  }`}>Real-time insights into your document repository</p>
                 </div>
               </div>
               <Button
                 onClick={fetchIndexStats}
                 variant="outline"
                 size="sm"
-                className="border-gray-300 hover:bg-gray-50"
+                className={`${
+                  theme === 'dark' 
+                    ? 'border-gray-600 hover:bg-gray-700 text-gray-200' 
+                    : theme === 'customer' 
+                      ? 'border-customer-300 hover:bg-customer-50 text-customer-700' 
+                      : 'border-gray-300 hover:bg-gray-50'
+                }`}
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh
@@ -685,55 +1024,163 @@ export function AdaptiveKBManagement() {
             {indexStats ? (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <Card className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                  <Card className={`p-6 ${
+                    theme === 'dark' 
+                      ? 'bg-gradient-to-br from-gray-700 to-gray-800 border-gray-600' 
+                      : theme === 'customer' 
+                        ? 'bg-gradient-to-br from-customer-50 to-customer-100 border-customer-200' 
+                        : 'bg-gradient-to-br from-primary/10 to-primary/20 border-primary/30'
+                  }`}>
                     <div className="flex items-center space-x-3">
-                      <FileText className="h-8 w-8 text-microsoft-blue" />
+                      <FileText className={`h-8 w-8 ${
+                        theme === 'dark' 
+                          ? 'text-gray-300' 
+                          : theme === 'customer' 
+                            ? 'text-customer-600' 
+                            : 'text-microsoft-blue'
+                      }`} />
                       <div>
-                        <div className="text-3xl font-bold text-microsoft-blue">
+                        <div className={`text-3xl font-bold ${
+                          theme === 'dark' 
+                            ? 'text-white' 
+                            : theme === 'customer' 
+                              ? 'text-customer-700' 
+                              : 'text-microsoft-blue'
+                        }`}>
                           {indexStats.total_documents?.toLocaleString() || 0}
                         </div>
-                        <div className="text-sm text-blue-700 font-medium">Total Documents</div>
+                        <div className={`text-sm font-medium ${
+                          theme === 'dark' 
+                            ? 'text-gray-300' 
+                            : theme === 'customer' 
+                              ? 'text-customer-600' 
+                              : 'text-primary'
+                        }`}>Total Documents</div>
                       </div>
                     </div>
                   </Card>
 
-                  <Card className="p-6 bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+                  <Card className={`p-6 ${
+                    theme === 'dark' 
+                      ? 'bg-gradient-to-br from-gray-700 to-gray-800 border-gray-600' 
+                      : theme === 'customer' 
+                        ? 'bg-gradient-to-br from-customer-100 to-customer-200 border-customer-300' 
+                        : 'bg-gradient-to-br from-green-50 to-green-100 border-green-200'
+                  }`}>
                     <div className="flex items-center space-x-3">
-                      <Building2 className="h-8 w-8 text-microsoft-green" />
+                      <Building2 className={`h-8 w-8 ${
+                        theme === 'dark' 
+                          ? 'text-gray-300' 
+                          : theme === 'customer' 
+                            ? 'text-customer-600' 
+                            : 'text-microsoft-green'
+                      }`} />
                       <div>
-                        <div className="text-3xl font-bold text-microsoft-green">
+                        <div className={`text-3xl font-bold ${
+                          theme === 'dark' 
+                            ? 'text-white' 
+                            : theme === 'customer' 
+                              ? 'text-customer-700' 
+                              : 'text-microsoft-green'
+                        }`}>
                           {Object.keys(indexStats.company_breakdown || {}).length}
                         </div>
-                        <div className="text-sm text-green-700 font-medium">Companies Indexed</div>
+                        <div className={`text-sm font-medium ${
+                          theme === 'dark' 
+                            ? 'text-gray-300' 
+                            : theme === 'customer' 
+                              ? 'text-customer-600' 
+                              : 'text-green-700'
+                        }`}>Companies Indexed</div>
                       </div>
                     </div>
                   </Card>
 
-                  <Card className="p-6 bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+                  <Card className={`p-6 ${
+                    theme === 'dark' 
+                      ? 'bg-gradient-to-br from-gray-700 to-gray-800 border-gray-600' 
+                      : theme === 'customer' 
+                        ? 'bg-gradient-to-br from-customer-200 to-customer-300 border-customer-400' 
+                        : 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200'
+                  }`}>
                     <div className="flex items-center space-x-3">
-                      <TrendingUp className="h-8 w-8 text-microsoft-purple" />
+                      <TrendingUp className={`h-8 w-8 ${
+                        theme === 'dark' 
+                          ? 'text-gray-300' 
+                          : theme === 'customer' 
+                            ? 'text-customer-600' 
+                            : 'text-microsoft-purple'
+                      }`} />
                       <div>
-                        <div className="text-3xl font-bold text-microsoft-purple">
+                        <div className={`text-3xl font-bold ${
+                          theme === 'dark' 
+                            ? 'text-white' 
+                            : theme === 'customer' 
+                              ? 'text-customer-700' 
+                              : 'text-microsoft-purple'
+                        }`}>
                           {Math.round((Number(indexStats.total_documents) || 0) / Math.max(Object.keys((indexStats.company_breakdown as Record<string, unknown>) || {}).length, 1))}
                         </div>
-                        <div className="text-sm text-purple-700 font-medium">Avg Docs/Company</div>
+                        <div className={`text-sm font-medium ${
+                          theme === 'dark' 
+                            ? 'text-gray-300' 
+                            : theme === 'customer' 
+                              ? 'text-customer-600' 
+                              : 'text-purple-700'
+                        }`}>Avg Docs/Company</div>
                       </div>
                     </div>
                   </Card>
                 </div>
 
                 {indexStats.company_breakdown && typeof indexStats.company_breakdown === 'object' && (
-                  <Card className="p-6 bg-gray-50 border-gray-200">
-                    <h4 className="font-semibold text-microsoft-gray mb-4 flex items-center">
-                      <Building2 className="h-5 w-5 mr-2" />
+                  <Card className={`p-8 border shadow-xl ${
+                      theme === 'dark' 
+                        ? 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700' 
+                        : theme === 'customer' 
+                          ? 'bg-gradient-to-br from-customer-50 to-customer-100 border-customer-200' 
+                          : 'bg-gradient-to-br from-white to-gray-50 border-gray-200'
+                    }`}>
+                    <h4 className={`font-semibold mb-4 flex items-center ${
+                      theme === 'dark' 
+                        ? 'text-white' 
+                        : theme === 'customer' 
+                          ? 'text-customer-900' 
+                          : 'text-microsoft-gray'
+                    }`}>
+                      <Building2 className={`h-5 w-5 mr-2 ${
+                        theme === 'dark' 
+                          ? 'text-gray-400' 
+                          : theme === 'customer' 
+                            ? 'text-customer-500' 
+                            : 'text-microsoft-gray'
+                      }`} />
                       Documents by Company
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                       {Object.entries(indexStats.company_breakdown as Record<string, number>).map(([company, count]) => (
-                        <div key={company} className="bg-white p-4 rounded-lg border border-gray-200 hover:shadow-sm transition-shadow">
-                          <div className="font-semibold text-microsoft-gray">{company}</div>
-                          <div className="text-sm text-gray-600 mt-1">
-                            <Badge variant="secondary" className="bg-gray-100 text-gray-700">
+                        <div key={company} className={`p-4 rounded-lg border transition-shadow ${
+                          theme === 'dark' 
+                            ? 'bg-gray-700 border-gray-600 hover:shadow-lg' 
+                            : theme === 'customer' 
+                              ? 'bg-customer-100 border-customer-300 hover:shadow-sm' 
+                              : 'bg-white border-gray-200 hover:shadow-sm'
+                        }`}>
+                          <div className={`font-semibold ${
+                            theme === 'dark' 
+                              ? 'text-white' 
+                              : theme === 'customer' 
+                                ? 'text-customer-900' 
+                                : 'text-microsoft-gray'
+                          }`}>{company}</div>
+                          <div className="text-sm mt-1">
+                            <Badge variant="secondary" className={`${
+                              theme === 'dark' 
+                                ? 'bg-gray-600 text-gray-200' 
+                                : theme === 'customer' 
+                                  ? 'bg-customer-200 text-customer-800' 
+                                  : 'bg-gray-100 text-gray-700'
+                            }`}>
                               {count} docs
                             </Badge>
                           </div>
@@ -746,57 +1193,99 @@ export function AdaptiveKBManagement() {
             ) : (
               <div className="text-center py-8">
                 <RefreshCw className="h-8 w-8 animate-spin text-gray-400 mx-auto mb-3" />
-                <div className="text-gray-500">Loading statistics...</div>
-              </div>
-            )}
-          </Card>
-
-          <Card className="p-8 bg-white/80 backdrop-blur-sm border-gray-200 shadow-lg">
-            <h3 className="text-xl font-semibold text-microsoft-gray mb-6 flex items-center">
-              <div className="w-6 h-6 bg-microsoft-orange rounded-full flex items-center justify-center mr-3">
-                <span className="text-white text-xs font-bold">?</span>
-              </div>
-              How It Works
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[
-                {
-                  step: 1,
-                  title: "Upload Document",
-                  description: "Upload a new document (PDF or HTML format)",
-                  color: "bg-microsoft-blue"
-                },
-                {
-                  step: 2,
-                  title: "Content Extraction",
-                  description: "Document Intelligence extracts and structures the content",
-                  color: "bg-microsoft-green"
-                },
-                {
-                  step: 3,
-                  title: "Vectorization",
-                  description: "Content is chunked and vectorized for optimal retrieval",
-                  color: "bg-microsoft-purple"
-                },
-                {
-                  step: 4,
-                  title: "Knowledge Base Update",
-                  description: "Knowledge base is updated and ready for queries",
-                  color: "bg-microsoft-orange"
-                }
-              ].map((item) => (
-                <div key={item.step} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
-                  <div className={`${item.color} text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold flex-shrink-0`}>
-                    {item.step}
-                  </div>
-                  <div>
-                    <div className="font-semibold text-microsoft-gray">{item.title}</div>
-                    <div className="text-sm text-gray-600 mt-1">{item.description}</div>
-                  </div>
-                </div>
-              ))}
+              <div className={`${
+                theme === 'dark' 
+                  ? 'text-gray-400' 
+                  : theme === 'customer' 
+                    ? 'text-customer-600' 
+                    : 'text-gray-500'
+              }`}>Loading statistics...</div>
             </div>
-              </Card>
+          )}
+        </Card>
+
+        <Card className={`p-8 border shadow-xl ${
+            theme === 'dark' 
+              ? 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700' 
+              : theme === 'customer' 
+                ? 'bg-gradient-to-br from-customer-50 to-customer-100 border-customer-200' 
+                : 'bg-gradient-to-br from-white to-gray-50 border-gray-200'
+          }`}>
+          <h3 className={`text-xl font-semibold mb-6 flex items-center ${
+            theme === 'dark' 
+              ? 'text-white' 
+              : theme === 'customer' 
+                ? 'text-customer-900' 
+                : 'text-microsoft-gray'
+          }`}>
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-3 ${
+              theme === 'dark' 
+                ? 'bg-gray-600' 
+                : theme === 'customer' 
+                  ? 'bg-customer-500' 
+                  : 'bg-microsoft-orange'
+            }`}>
+              <span className="text-white text-xs font-bold">?</span>
+            </div>
+            How It Works
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[
+              {
+                step: 1,
+                title: "Upload Document",
+                description: "Upload a new document (PDF or HTML format)",
+                color: theme === 'dark' ? 'bg-gray-600' : theme === 'customer' ? 'bg-customer-500' : 'bg-microsoft-blue'
+              },
+              {
+                step: 2,
+                title: "Content Extraction",
+                description: "Document Intelligence extracts and structures the content",
+                color: theme === 'dark' ? 'bg-gray-600' : theme === 'customer' ? 'bg-customer-600' : 'bg-microsoft-green'
+              },
+              {
+                step: 3,
+                title: "Vectorization",
+                description: "Content is chunked and vectorized for optimal retrieval",
+                color: theme === 'dark' ? 'bg-gray-600' : theme === 'customer' ? 'bg-customer-700' : 'bg-microsoft-purple'
+              },
+              {
+                step: 4,
+                title: "Knowledge Base Update",
+                description: "Knowledge base is updated and ready for queries",
+                color: theme === 'dark' ? 'bg-gray-600' : theme === 'customer' ? 'bg-customer-800' : 'bg-microsoft-orange'
+              }
+            ].map((item) => (
+              <div key={item.step} className={`flex items-start space-x-4 p-4 rounded-lg ${
+                theme === 'dark' 
+                  ? 'bg-gray-700' 
+                  : theme === 'customer' 
+                    ? 'bg-customer-100' 
+                    : 'bg-gray-50'
+              }`}>
+                <div className={`${item.color} text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold flex-shrink-0`}>
+                  {item.step}
+                </div>
+                <div>
+                  <div className={`font-semibold ${
+                    theme === 'dark' 
+                      ? 'text-white' 
+                      : theme === 'customer' 
+                        ? 'text-customer-900' 
+                        : 'text-microsoft-gray'
+                  }`}>{item.title}</div>
+                  <div className={`text-sm mt-1 ${
+                    theme === 'dark' 
+                      ? 'text-gray-300' 
+                      : theme === 'customer' 
+                        ? 'text-customer-700' 
+                        : 'text-gray-600'
+                  }`}>{item.description}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+            </Card>
             </>
           )}
 
@@ -808,29 +1297,71 @@ export function AdaptiveKBManagement() {
 
           {activeTab === 'admin' && (
             <>
-              <Card className="p-8 bg-white/80 backdrop-blur-sm border-gray-200 shadow-lg">
+              <Card className={`p-8 border shadow-xl ${
+                  theme === 'dark' 
+                    ? 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700' 
+                    : theme === 'customer' 
+                      ? 'bg-gradient-to-br from-customer-50 to-customer-100 border-customer-200' 
+                      : 'bg-gradient-to-br from-white to-gray-50 border-gray-200'
+                }`}>
                 <div className="flex items-center space-x-3 mb-6">
-                  <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    theme === 'dark' 
+                      ? 'bg-red-600' 
+                      : theme === 'customer' 
+                        ? 'bg-red-500' 
+                        : 'bg-red-500'
+                  }`}>
                     <ShieldAlert className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold text-microsoft-gray">Administrator Controls</h3>
-                    <p className="text-red-600 font-medium">⚠️ These operations can modify or delete data. Use with caution.</p>
+                    <h3 className={`text-xl font-semibold ${
+                      theme === 'dark' 
+                        ? 'text-white' 
+                        : theme === 'customer' 
+                          ? 'text-customer-900' 
+                          : 'text-microsoft-gray'
+                    }`}>Administrator Controls</h3>
+                    <p className={`font-medium ${
+                      theme === 'dark' 
+                        ? 'text-red-400' 
+                        : theme === 'customer' 
+                          ? 'text-red-600' 
+                          : 'text-red-600'
+                    }`}>⚠️ These operations can modify or delete data. Use with caution.</p>
                   </div>
                 </div>
 
                 {/* Azure Service Status */}
                 <div className="mb-8">
                   <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-semibold text-microsoft-gray flex items-center">
-                      <Database className="h-5 w-5 mr-2 text-microsoft-blue" />
+                    <h4 className={`font-semibold flex items-center ${
+                      theme === 'dark' 
+                        ? 'text-white' 
+                        : theme === 'customer' 
+                          ? 'text-customer-900' 
+                          : 'text-microsoft-gray'
+                    }`}>
+                      <Database className={`h-5 w-5 mr-2 ${
+                        theme === 'dark' 
+                          ? 'text-gray-400' 
+                          : theme === 'customer' 
+                            ? 'text-customer-500' 
+                            : 'text-microsoft-blue'
+                      }`} />
                       Azure Service Status
                     </h4>
                     <Button
                       onClick={fetchAzureServiceStatus}
                       variant="outline"
                       size="sm"
-                      className="border-gray-300 hover:bg-gray-50"
+                      className={`${
+                        theme === 'dark' 
+                          ? 'border-gray-600 hover:bg-gray-700 text-gray-200' 
+                          : theme === 'customer' 
+                            ? 'border-customer-300 hover:bg-customer-50 text-customer-700' 
+                            : 'border-gray-300 hover:bg-gray-50'
+                      }`}
                     >
                       <RefreshCw className="h-4 w-4 mr-2" />
                       Refresh
@@ -839,71 +1370,215 @@ export function AdaptiveKBManagement() {
 
                   {azureServiceStatus ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <Card className={`p-4 ${azureServiceStatus.services?.search_client ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                      <Card className={`p-4 ${
+                        azureServiceStatus.services?.search_client 
+                          ? theme === 'dark' 
+                            ? 'bg-green-900/50 border-green-700' 
+                            : theme === 'customer' 
+                              ? 'bg-green-50 border-green-200' 
+                              : 'bg-green-50 border-green-200'
+                          : theme === 'dark' 
+                            ? 'bg-red-900/50 border-red-700' 
+                            : theme === 'customer' 
+                              ? 'bg-red-50 border-red-200' 
+                              : 'bg-red-50 border-red-200'
+                      }`}>
                         <div className="flex items-center space-x-2">
                           <div className={`w-3 h-3 rounded-full ${azureServiceStatus.services?.search_client ? 'bg-green-500' : 'bg-red-500'}`} />
-                          <span className="font-medium text-microsoft-gray">Search Client</span>
+                          <span className={`font-medium ${
+                            theme === 'dark' 
+                              ? 'text-white' 
+                              : theme === 'customer' 
+                                ? 'text-customer-900' 
+                                : 'text-microsoft-gray'
+                          }`}>Search Client</span>
                         </div>
-                        <div className="text-sm text-gray-600 mt-1">
+                        <div className={`text-sm mt-1 ${
+                          theme === 'dark' 
+                            ? 'text-gray-300' 
+                            : theme === 'customer' 
+                              ? 'text-customer-700' 
+                              : 'text-gray-600'
+                        }`}>
                           {azureServiceStatus.services?.search_client ? 'Connected' : 'Disconnected'}
                         </div>
                       </Card>
 
-                      <Card className={`p-4 ${azureServiceStatus.services?.form_recognizer_client ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                      <Card className={`p-4 ${
+                        azureServiceStatus.services?.form_recognizer_client 
+                          ? theme === 'dark' 
+                            ? 'bg-green-900/50 border-green-700' 
+                            : theme === 'customer' 
+                              ? 'bg-green-50 border-green-200' 
+                              : 'bg-green-50 border-green-200'
+                          : theme === 'dark' 
+                            ? 'bg-red-900/50 border-red-700' 
+                            : theme === 'customer' 
+                              ? 'bg-red-50 border-red-200' 
+                              : 'bg-red-50 border-red-200'
+                      }`}>
                         <div className="flex items-center space-x-2">
                           <div className={`w-3 h-3 rounded-full ${azureServiceStatus.services?.form_recognizer_client ? 'bg-green-500' : 'bg-red-500'}`} />
-                          <span className="font-medium text-microsoft-gray">Document Intelligence</span>
+                          <span className={`font-medium ${
+                            theme === 'dark' 
+                              ? 'text-white' 
+                              : theme === 'customer' 
+                                ? 'text-customer-900' 
+                                : 'text-microsoft-gray'
+                          }`}>Document Intelligence</span>
                         </div>
-                        <div className="text-sm text-gray-600 mt-1">
+                        <div className={`text-sm mt-1 ${
+                          theme === 'dark' 
+                            ? 'text-gray-300' 
+                            : theme === 'customer' 
+                              ? 'text-customer-700' 
+                              : 'text-gray-600'
+                        }`}>
                           {azureServiceStatus.services?.form_recognizer_client ? 'Connected' : 'Disconnected'}
                         </div>
                       </Card>
 
-                      <Card className={`p-4 ${azureServiceStatus.services?.openai_client ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                      <Card className={`p-4 ${
+                        azureServiceStatus.services?.openai_client 
+                          ? theme === 'dark' 
+                            ? 'bg-green-900/50 border-green-700' 
+                            : theme === 'customer' 
+                              ? 'bg-green-50 border-green-200' 
+                              : 'bg-green-50 border-green-200'
+                          : theme === 'dark' 
+                            ? 'bg-red-900/50 border-red-700' 
+                            : theme === 'customer' 
+                              ? 'bg-red-50 border-red-200' 
+                              : 'bg-red-50 border-red-200'
+                      }`}>
                         <div className="flex items-center space-x-2">
                           <div className={`w-3 h-3 rounded-full ${azureServiceStatus.services?.openai_client ? 'bg-green-500' : 'bg-red-500'}`} />
-                          <span className="font-medium text-microsoft-gray">Azure OpenAI</span>
+                          <span className={`font-medium ${
+                            theme === 'dark' 
+                              ? 'text-white' 
+                              : theme === 'customer' 
+                                ? 'text-customer-900' 
+                                : 'text-microsoft-gray'
+                          }`}>Azure OpenAI</span>
                         </div>
-                        <div className="text-sm text-gray-600 mt-1">
+                        <div className={`text-sm mt-1 ${
+                          theme === 'dark' 
+                            ? 'text-gray-300' 
+                            : theme === 'customer' 
+                              ? 'text-customer-700' 
+                              : 'text-gray-600'
+                        }`}>
                           {azureServiceStatus.services?.openai_client ? 'Connected' : 'Disconnected'}
                         </div>
                       </Card>
 
-                      <Card className={`p-4 col-span-full ${azureServiceStatus.services?.using_mock_services ? 'bg-yellow-50 border-yellow-200' : 'bg-blue-50 border-blue-200'}`}>
+                      <Card className={`p-4 col-span-full ${
+                        azureServiceStatus.services?.using_mock_services 
+                          ? theme === 'dark' 
+                            ? 'bg-yellow-900/50 border-yellow-700' 
+                            : theme === 'customer' 
+                              ? 'bg-yellow-50 border-yellow-200' 
+                              : 'bg-yellow-50 border-yellow-200'
+                          : theme === 'dark' 
+                            ? 'bg-gray-800/50 border-gray-700' 
+                            : theme === 'customer' 
+                              ? 'bg-customer-50 border-customer-200' 
+                              : 'bg-blue-50 border-blue-200'
+                      }`}>
                         <div className="flex items-center space-x-2">
-                          <div className={`w-3 h-3 rounded-full ${azureServiceStatus.services?.using_mock_services ? 'bg-yellow-500' : 'bg-blue-500'}`} />
-                          <span className="font-medium text-microsoft-gray">Service Mode</span>
+                          <div className={`w-3 h-3 rounded-full ${azureServiceStatus.services?.using_mock_services ? 'bg-yellow-500' : theme === 'dark' ? 'bg-gray-500' : 'bg-blue-500'}`} />
+                          <span className={`font-medium ${
+                            theme === 'dark' 
+                              ? 'text-white' 
+                              : theme === 'customer' 
+                                ? 'text-customer-900' 
+                                : 'text-microsoft-gray'
+                          }`}>Service Mode</span>
                         </div>
-                        <div className="text-sm text-gray-600 mt-1">
+                        <div className={`text-sm mt-1 ${
+                          theme === 'dark' 
+                            ? 'text-gray-300' 
+                            : theme === 'customer' 
+                              ? 'text-customer-700' 
+                              : 'text-gray-600'
+                        }`}>
                           {azureServiceStatus.services?.using_mock_services ? 'Mock Services (Development)' : 'Real Azure Services (Production)'}
                         </div>
                       </Card>
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <RefreshCw className="h-8 w-8 animate-spin text-gray-400 mx-auto mb-3" />
-                      <div className="text-gray-500">Loading service status...</div>
+                      <RefreshCw className={`h-8 w-8 animate-spin mx-auto mb-3 ${
+                        theme === 'dark' 
+                          ? 'text-gray-400' 
+                          : theme === 'customer' 
+                            ? 'text-customer-500' 
+                            : 'text-gray-400'
+                      }`} />
+                      <div className={`${
+                        theme === 'dark' 
+                          ? 'text-gray-400' 
+                          : theme === 'customer' 
+                            ? 'text-customer-600' 
+                            : 'text-gray-500'
+                      }`}>Loading service status...</div>
                     </div>
                   )}
                 </div>
 
                 {/* Index Management */}
                 <div className="mb-8">
-                  <h4 className="font-semibold text-microsoft-gray mb-4 flex items-center">
-                    <Database className="h-5 w-5 mr-2 text-microsoft-orange" />
+                  <h4 className={`font-semibold mb-4 flex items-center ${
+                    theme === 'dark' 
+                      ? 'text-white' 
+                      : theme === 'customer' 
+                        ? 'text-customer-900' 
+                        : 'text-microsoft-gray'
+                  }`}>
+                    <Database className={`h-5 w-5 mr-2 ${
+                      theme === 'dark' 
+                        ? 'text-gray-400' 
+                        : theme === 'customer' 
+                          ? 'text-customer-500' 
+                          : 'text-microsoft-orange'
+                    }`} />
                     Search Index Management
                   </h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Card className="p-6 bg-blue-50 border-blue-200">
-                      <h5 className="font-medium text-microsoft-gray mb-2">Ensure Index Exists</h5>
-                      <p className="text-sm text-gray-600 mb-4">
+                    <Card className={`p-6 ${
+                      theme === 'dark' 
+                        ? 'bg-gray-800/50 border-gray-700' 
+                        : theme === 'customer' 
+                          ? 'bg-customer-50 border-customer-200' 
+                          : 'bg-blue-50 border-blue-200'
+                    }`}>
+                      <h5 className={`font-medium mb-2 ${
+                        theme === 'dark' 
+                          ? 'text-white' 
+                          : theme === 'customer' 
+                            ? 'text-customer-900' 
+                            : 'text-microsoft-gray'
+                      }`}>Ensure Index Exists</h5>
+                      <p className={`text-sm mb-4 ${
+                        theme === 'dark' 
+                          ? 'text-gray-300' 
+                          : theme === 'customer' 
+                            ? 'text-customer-700' 
+                            : 'text-gray-600'
+                      }`}>
                         Verify the search index exists and create it if missing. This won't delete existing data.
                       </p>
                       <Button
                         onClick={ensureSearchIndex}
                         disabled={isAdminOperationInProgress}
-                        className="bg-microsoft-blue hover:bg-blue-700 text-white"
+                        className={`text-white ${
+                          theme === 'dark' 
+                            ? 'bg-gray-600 hover:bg-gray-700' 
+                            : theme === 'customer' 
+                              ? 'bg-customer-500 hover:bg-customer-600' 
+                              : 'bg-microsoft-blue hover:bg-microsoft-blue/90'
+                        }`}
                       >
                         {isAdminOperationInProgress ? (
                           <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -914,12 +1589,30 @@ export function AdaptiveKBManagement() {
                       </Button>
                     </Card>
 
-                    <Card className="p-6 bg-red-50 border-red-200">
-                      <h5 className="font-medium text-microsoft-gray mb-2 flex items-center">
+                    <Card className={`p-6 ${
+                      theme === 'dark' 
+                        ? 'bg-red-900/50 border-red-700' 
+                        : theme === 'customer' 
+                          ? 'bg-red-50 border-red-200' 
+                          : 'bg-red-50 border-red-200'
+                    }`}>
+                      <h5 className={`font-medium mb-2 flex items-center ${
+                        theme === 'dark' 
+                          ? 'text-white' 
+                          : theme === 'customer' 
+                            ? 'text-customer-900' 
+                            : 'text-microsoft-gray'
+                      }`}>
                         <Trash2 className="h-4 w-4 mr-2 text-red-500" />
                         Recreate Index
                       </h5>
-                      <p className="text-sm text-gray-600 mb-4">
+                      <p className={`text-sm mb-4 ${
+                        theme === 'dark' 
+                          ? 'text-gray-300' 
+                          : theme === 'customer' 
+                            ? 'text-customer-700' 
+                            : 'text-gray-600'
+                      }`}>
                         <strong className="text-red-600">WARNING:</strong> This will delete all existing data and create a fresh index.
                       </p>
                       <Button
@@ -942,10 +1635,22 @@ export function AdaptiveKBManagement() {
                 {adminOperationStatus && (
                   <div className={`p-4 rounded-lg border ${
                     adminOperationStatus.startsWith('Error')
-                      ? 'bg-red-50 text-red-700 border-red-200'
+                      ? theme === 'dark' 
+                        ? 'bg-red-900/50 border-red-700 text-red-300' 
+                        : theme === 'customer' 
+                          ? 'bg-red-50 border-red-200 text-red-700' 
+                          : 'bg-red-50 text-red-700 border-red-200'
                       : adminOperationStatus.startsWith('Success')
-                      ? 'bg-green-50 text-green-700 border-green-200'
-                      : 'bg-blue-50 text-blue-700 border-blue-200'
+                      ? theme === 'dark' 
+                        ? 'bg-green-900/50 border-green-700 text-green-300' 
+                        : theme === 'customer' 
+                          ? 'bg-green-50 border-green-200 text-green-700' 
+                          : 'bg-green-50 text-green-700 border-green-200'
+                      : theme === 'dark' 
+                        ? 'bg-gray-800/50 border-gray-700 text-gray-300' 
+                        : theme === 'customer' 
+                          ? 'bg-customer-50 border-customer-200 text-customer-700' 
+                          : 'bg-blue-50 text-blue-700 border-blue-200'
                   }`}>
                     <div className="flex items-center space-x-2">
                       {adminOperationStatus.startsWith('Error') ? (
@@ -953,7 +1658,7 @@ export function AdaptiveKBManagement() {
                       ) : adminOperationStatus.startsWith('Success') ? (
                         <CheckCircle className="h-5 w-5 text-green-500" />
                       ) : (
-                        <Clock className="h-5 w-5 text-blue-500" />
+                        <Clock className={`h-5 w-5 ${theme === 'dark' ? 'text-gray-500' : 'text-blue-500'}`} />
                       )}
                       <span className="font-medium">{adminOperationStatus}</span>
                     </div>
@@ -962,53 +1667,155 @@ export function AdaptiveKBManagement() {
               </Card>
 
               {/* Information Card */}
-              <Card className="p-8 bg-white/80 backdrop-blur-sm border-gray-200 shadow-lg">
-                <h3 className="text-xl font-semibold text-microsoft-gray mb-6 flex items-center">
-                  <div className="w-6 h-6 bg-microsoft-orange rounded-full flex items-center justify-center mr-3">
+              <Card className={`p-8 border shadow-xl ${
+                  theme === 'dark' 
+                    ? 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700' 
+                    : theme === 'customer' 
+                      ? 'bg-gradient-to-br from-customer-50 to-customer-100 border-customer-200' 
+                      : 'bg-gradient-to-br from-white to-gray-50 border-gray-200'
+                }`}>
+                <h3 className={`text-xl font-semibold mb-6 flex items-center ${
+                  theme === 'dark' 
+                    ? 'text-white' 
+                    : theme === 'customer' 
+                      ? 'text-customer-900' 
+                      : 'text-microsoft-gray'
+                }`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-3 ${
+                    theme === 'dark' 
+                      ? 'bg-gray-600' 
+                      : theme === 'customer' 
+                        ? 'bg-customer-500' 
+                        : 'bg-microsoft-orange'
+                  }`}>
                     <span className="text-white text-xs font-bold">ℹ</span>
                   </div>
                   About the Modular System
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <h4 className="font-semibold text-microsoft-gray mb-3">Enhanced Features</h4>
-                    <ul className="space-y-2 text-sm text-gray-600">
+                    <h4 className={`font-semibold mb-3 ${
+                      theme === 'dark' 
+                        ? 'text-white' 
+                        : theme === 'customer' 
+                          ? 'text-customer-900' 
+                          : 'text-microsoft-gray'
+                    }`}>Enhanced Features</h4>
+                    <ul className="space-y-2 text-sm">
                       <li className="flex items-center space-x-2">
                         <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span>Centralized Azure Service Management</span>
+                        <span className={`${
+                          theme === 'dark' 
+                            ? 'text-gray-300' 
+                            : theme === 'customer' 
+                              ? 'text-customer-700' 
+                              : 'text-gray-600'
+                        }`}>Centralized Azure Service Management</span>
                       </li>
                       <li className="flex items-center space-x-2">
                         <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span>Enhanced Search Index Schema</span>
+                        <span className={`${
+                          theme === 'dark' 
+                            ? 'text-gray-300' 
+                            : theme === 'customer' 
+                              ? 'text-customer-700' 
+                              : 'text-gray-600'
+                        }`}>Enhanced Search Index Schema</span>
                       </li>
                       <li className="flex items-center space-x-2">
                         <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span>Vector Embeddings with Azure OpenAI</span>
+                        <span className={`${
+                          theme === 'dark' 
+                            ? 'text-gray-300' 
+                            : theme === 'customer' 
+                              ? 'text-customer-700' 
+                              : 'text-gray-600'
+                        }`}>Vector Embeddings with Azure OpenAI</span>
                       </li>
                       <li className="flex items-center space-x-2">
                         <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span>Document Intelligence Integration</span>
+                        <span className={`${
+                          theme === 'dark' 
+                            ? 'text-gray-300' 
+                            : theme === 'customer' 
+                              ? 'text-customer-700' 
+                              : 'text-gray-600'
+                        }`}>Document Intelligence Integration</span>
                       </li>
                     </ul>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-microsoft-gray mb-3">System Architecture</h4>
-                    <ul className="space-y-2 text-sm text-gray-600">
+                    <h4 className={`font-semibold mb-3 ${
+                      theme === 'dark' 
+                        ? 'text-white' 
+                        : theme === 'customer' 
+                          ? 'text-customer-900' 
+                          : 'text-microsoft-gray'
+                    }`}>System Architecture</h4>
+                    <ul className="space-y-2 text-sm">
                       <li className="flex items-center space-x-2">
-                        <Zap className="h-4 w-4 text-microsoft-blue" />
-                        <span>Modular Azure Services Layer</span>
+                        <Zap className={`h-4 w-4 ${
+                          theme === 'dark' 
+                            ? 'text-gray-400' 
+                            : theme === 'customer' 
+                              ? 'text-customer-500' 
+                              : 'text-microsoft-blue'
+                        }`} />
+                        <span className={`${
+                          theme === 'dark' 
+                            ? 'text-gray-300' 
+                            : theme === 'customer' 
+                              ? 'text-customer-700' 
+                              : 'text-gray-600'
+                        }`}>Modular Azure Services Layer</span>
                       </li>
                       <li className="flex items-center space-x-2">
-                        <Zap className="h-4 w-4 text-microsoft-blue" />
-                        <span>Enhanced Document Processing Pipeline</span>
+                        <Zap className={`h-4 w-4 ${
+                          theme === 'dark' 
+                            ? 'text-gray-400' 
+                            : theme === 'customer' 
+                              ? 'text-customer-500' 
+                              : 'text-microsoft-blue'
+                        }`} />
+                        <span className={`${
+                          theme === 'dark' 
+                            ? 'text-gray-300' 
+                            : theme === 'customer' 
+                              ? 'text-customer-700' 
+                              : 'text-gray-600'
+                        }`}>Enhanced Document Processing Pipeline</span>
                       </li>
                       <li className="flex items-center space-x-2">
-                        <Zap className="h-4 w-4 text-microsoft-blue" />
-                        <span>Real-time Progress Tracking</span>
+                        <Zap className={`h-4 w-4 ${
+                          theme === 'dark' 
+                            ? 'text-gray-400' 
+                            : theme === 'customer' 
+                              ? 'text-customer-500' 
+                              : 'text-microsoft-blue'
+                        }`} />
+                        <span className={`${
+                          theme === 'dark' 
+                            ? 'text-gray-300' 
+                            : theme === 'customer' 
+                              ? 'text-customer-700' 
+                              : 'text-gray-600'
+                        }`}>Real-time Progress Tracking</span>
                       </li>
                       <li className="flex items-center space-x-2">
-                        <Zap className="h-4 w-4 text-microsoft-blue" />
-                        <span>Comprehensive Error Handling</span>
+                        <Zap className={`h-4 w-4 ${
+                          theme === 'dark' 
+                            ? 'text-gray-400' 
+                            : theme === 'customer' 
+                              ? 'text-customer-500' 
+                              : 'text-microsoft-blue'
+                        }`} />
+                        <span className={`${
+                          theme === 'dark' 
+                            ? 'text-gray-300' 
+                            : theme === 'customer' 
+                              ? 'text-customer-700' 
+                              : 'text-gray-600'
+                        }`}>Comprehensive Error Handling</span>
                       </li>
                     </ul>
                   </div>
