@@ -14,7 +14,6 @@ import {
   Users, 
   Building2,
   ChevronDown,
-  ChevronUp,
   ChevronRight
 } from 'lucide-react';
 

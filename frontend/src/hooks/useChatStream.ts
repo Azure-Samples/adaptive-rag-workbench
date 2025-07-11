@@ -208,6 +208,36 @@ export function useChatStream(mode: string) {
                   });
                 }
                 
+                // Handle complete answer for agentic responses
+                if (data.type === 'answer_complete' && data.answer) {
+                  assistantMessage = data.answer;
+                  
+                  setMessages(prev => {
+                    const newMessages = [...prev];
+                    
+                    if (messageIndex === -1) {
+                      messageIndex = newMessages.length;
+                      newMessages.push({
+                        role: 'assistant',
+                        content: assistantMessage,
+                        timestamp: new Date()
+                      });
+                    } else {
+                      const existingMessage = newMessages[messageIndex];
+                      newMessages[messageIndex] = {
+                        role: existingMessage?.role || 'assistant',
+                        content: assistantMessage,
+                        timestamp: existingMessage?.timestamp || new Date()
+                      };
+                    }
+                    
+                    return newMessages;
+                  });
+                  
+                  // Set streaming to false since we have the complete answer
+                  setIsStreaming(false);
+                }
+                
                 if (data.type === 'citations' && data.citations) {
                   setCitations(data.citations);
                 }

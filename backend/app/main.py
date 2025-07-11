@@ -5,6 +5,7 @@ from .api.chat import router as chat_router
 from .api.ingest import router as ingest_router
 from .api.company_search import router as company_search_router
 from .api.sec_documents import router as sec_documents_router
+from .api.admin import router as admin_router
 from .core.globals import initialize_kernel, set_agent_registry
 
 try:
@@ -40,6 +41,7 @@ app.include_router(chat_router, prefix="/api")
 app.include_router(ingest_router, prefix="/api")
 app.include_router(company_search_router, prefix="/api/companies")
 app.include_router(sec_documents_router)
+app.include_router(admin_router, prefix="/api")
 
 @app.get("/healthz")
 async def healthz():

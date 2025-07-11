@@ -60,8 +60,8 @@ async def handle_rag_modes(request: ChatRequest, session_id: str, current_user: 
     
     async def generate():
         try:
-            if not agentic_rag_service.search_client:
-                await agentic_rag_service.initialize()
+            # Ensure agentic service is properly initialized
+            await agentic_rag_service.ensure_initialized()
             
             azure_service_manager = await get_azure_service_manager()
             user_message = {
@@ -89,11 +89,16 @@ async def handle_rag_modes(request: ChatRequest, session_id: str, current_user: 
                 raise ValueError(f"Unsupported RAG mode: {request.mode}")
             
             answer = result.get("answer", "")
-            words = answer.split()
             
-            for i, word in enumerate(words):
-                yield f"data: {json.dumps({'type': 'token', 'token': word + ' ', 'index': i})}\n\n"
-                await asyncio.sleep(0.05)  # Simulate streaming delay
+            # For agentic responses, send the complete answer at once to preserve markdown formatting
+            if request.mode == "agentic-rag":
+                yield f"data: {json.dumps({'type': 'answer_complete', 'answer': answer})}\n\n"
+            else:
+                # For other modes, stream word by word
+                words = answer.split()
+                for i, word in enumerate(words):
+                    yield f"data: {json.dumps({'type': 'token', 'token': word + ' ', 'index': i})}\n\n"
+                    await asyncio.sleep(0.05)  # Simulate streaming delay
             
             citations = result.get("citations", [])
             if citations:
@@ -149,54 +154,136 @@ async def handle_legacy_modes(request: ChatRequest, current_user: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 async def process_fast_rag(prompt: str, session_id: str) -> Dict[str, Any]:
-    """Process Fast RAG mode using basic retrieval"""
+    """
+    Process Fast RAG mode using hybrid vector search with Azure AI Search.
+    
+    This implements the standard RAG pattern with:
+    - Hybrid search (text + vector) for enhanced retrieval
+    - Semantic ranking for improved relevance
+    - Proper citation tracking with source attribution
+    - Score-based filtering for quality control
+    """
     try:
-        docs = await retriever.invoke(prompt)
+        import time
+        start_time = time.time()
         
-        if docs:
-            top_content = []
-            citations = []
+        # Perform hybrid search with the enhanced retriever
+        docs = await retriever.invoke(
+            query=prompt,
+            filters=None,  # No automatic filters - let hybrid search handle relevance
+            top_k=5  # Limit to top 5 for fast mode
+        )
+        
+        processing_time_ms = int((time.time() - start_time) * 1000)
+        
+        if not docs:
+            return {
+                "answer": "No relevant documents found in the knowledge base for your query. Please try rephrasing your question or use more specific terms.",
+                "citations": [],
+                "query_rewrites": [prompt],
+                "token_usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+                "processing_time_ms": processing_time_ms,
+                "retrieval_method": "hybrid_vector_search",
+                "documents_retrieved": 0,
+                "success": True
+            }
+        
+        # Build comprehensive answer with context
+        answer_parts = []
+        citations = []
+        
+        # Group documents by company/source for better organization
+        doc_groups = {}
+        for doc in docs:
+            company = doc.get('company', 'Unknown')
+            if company not in doc_groups:
+                doc_groups[company] = []
+            doc_groups[company].append(doc)
+        
+        # Generate structured response
+        answer_parts.append(f"Based on my analysis of {len(docs)} relevant documents, here's what I found:")
+        answer_parts.append("")
+        
+        citation_id = 1
+        for company, company_docs in doc_groups.items():
+            if company != 'Unknown':
+                answer_parts.append(f"**{company}:**")
             
-            for i, doc in enumerate(docs[:3]):  # Use top 3 documents
-                content = doc.get('content', '')[:500]  # Limit content
-                if content:
-                    top_content.append(content)
-                    citations.append({
-                        'id': str(i + 1),
-                        'title': doc.get('title', f'Document {i + 1}'),
-                        'content': content,
+            for doc in company_docs:
+                content = doc.get('content', '')
+                title = doc.get('title', f'Document {citation_id}')
+                
+                # Use highlights if available, otherwise use content preview
+                highlights = doc.get('highlights', [])
+                if highlights:
+                    relevant_text = highlights[0][:300]
+                else:
+                    relevant_text = content[:300]
+                
+                if relevant_text:
+                    answer_parts.append(f"• {relevant_text}...")
+                    
+                    # Build comprehensive citation
+                    citation = {
+                        'id': str(citation_id),
+                        'title': title,
+                        'content': relevant_text,
                         'source': doc.get('source', ''),
-                        'score': doc.get('score', 0.0)
-                    })
+                        'company': doc.get('company', ''),
+                        'document_type': doc.get('document_type', ''),
+                        'filing_date': doc.get('filing_date', ''),
+                        'page_number': doc.get('page_number'),
+                        'section_type': doc.get('section_type', ''),
+                        'document_url': doc.get('document_url', ''),
+                        'search_score': doc.get('search_score', 0.0),
+                        'reranker_score': doc.get('reranker_score'),
+                        'credibility_score': doc.get('credibility_score', 0.0),
+                        'form_type': doc.get('form_type', ''),
+                        'ticker': doc.get('ticker', ''),
+                        'chunk_id': doc.get('chunk_id', ''),
+                        'citation_info': doc.get('citation_info', '')
+                    }
+                    citations.append(citation)
+                    citation_id += 1
             
-            if top_content:
-                answer = f"Based on the available information:\n\n" + "\n\n".join(top_content)
-            else:
-                answer = "I couldn't find specific information to answer your question."
-        else:
-            answer = "No relevant documents found for your query."
-            citations = []
+            answer_parts.append("")
+        
+        # Add methodology note
+        answer_parts.append("---")
+        answer_parts.append("*This response uses hybrid vector search combining text and semantic search for enhanced relevance.*")
+        
+        # Calculate search quality metrics
+        avg_score = sum(doc.get('search_score', 0) for doc in docs) / len(docs)
+        has_reranker_scores = any(doc.get('reranker_score') for doc in docs)
         
         return {
-            "answer": answer,
+            "answer": "\n".join(answer_parts),
             "citations": citations,
-            "query_rewrites": [prompt],  # No rewrites in fast mode
+            "query_rewrites": [prompt],  # Fast mode doesn't do query rewriting
             "token_usage": {
-                "prompt_tokens": 0,  # Fast RAG doesn't use LLM, so no tokens
+                "prompt_tokens": 0,  # Fast RAG doesn't use LLM for generation
                 "completion_tokens": 0,
                 "total_tokens": 0
             },
-            "processing_time_ms": 0,  # Will be calculated by caller
-            "retrieval_method": "fast_rag",
+            "processing_time_ms": processing_time_ms,
+            "retrieval_method": "hybrid_vector_search",
+            "documents_retrieved": len(docs),
+            "average_relevance_score": round(avg_score, 3),
+            "semantic_ranking_used": has_reranker_scores,
             "success": True
         }
         
     except Exception as e:
+        import traceback
         return {
             "answer": f"Error in Fast RAG processing: {str(e)}",
             "citations": [],
             "query_rewrites": [],
             "token_usage": {"total_tokens": 0, "error": str(e)},
+            "processing_time_ms": 0,
+            "retrieval_method": "hybrid_vector_search",
+            "documents_retrieved": 0,
+            "error_details": traceback.format_exc(),
             "success": False
         }
 
@@ -303,3 +390,75 @@ async def generate_follow_up_questions(request: FollowUpRequest, current_user: d
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+class RetrievalTestRequest(BaseModel):
+    query: str
+    filters: Optional[Dict[str, str]] = None
+    top_k: Optional[int] = 10
+    include_highlights: bool = True
+
+@router.post("/chat/test-retrieval")
+async def test_retrieval(request: RetrievalTestRequest, current_user: dict = Depends(get_current_user)):
+    """Test the enhanced retrieval capabilities with hybrid vector search"""
+    try:
+        import time
+        start_time = time.time()
+        
+        # Test the enhanced retriever
+        docs = await retriever.invoke(
+            query=request.query,
+            filters=request.filters,  # Only use explicitly provided filters
+            top_k=request.top_k
+        )
+        
+        processing_time_ms = int((time.time() - start_time) * 1000)
+        
+        # Build comprehensive test results
+        results = {
+            "query": request.query,
+            "filters_applied": request.filters,
+            "documents_retrieved": len(docs),
+            "processing_time_ms": processing_time_ms,
+            "search_method": "hybrid_vector_search",
+            "documents": []
+        }
+        
+        for i, doc in enumerate(docs):
+            doc_result = {
+                "rank": i + 1,
+                "id": doc.get('id', ''),
+                "title": doc.get('title', ''),
+                "company": doc.get('company', ''),
+                "document_type": doc.get('document_type', ''),
+                "filing_date": doc.get('filing_date', ''),
+                "section_type": doc.get('section_type', ''),
+                "search_score": doc.get('search_score', 0.0),
+                "reranker_score": doc.get('reranker_score'),
+                "credibility_score": doc.get('credibility_score', 0.0),
+                "content_preview": doc.get('content', '')[:200] + "..." if doc.get('content') else "",
+                "source": doc.get('source', ''),
+                "citation": doc.get('citation', {})
+            }
+            
+            if request.include_highlights:
+                doc_result["highlights"] = doc.get('highlights', [])
+            
+            results["documents"].append(doc_result)
+        
+        # Add search quality metrics
+        if docs:
+            scores = [doc.get('search_score', 0) for doc in docs]
+            reranker_scores = [doc.get('reranker_score', 0) for doc in docs if doc.get('reranker_score')]
+            
+            results["quality_metrics"] = {
+                "average_search_score": round(sum(scores) / len(scores), 3),
+                "max_search_score": round(max(scores), 3),
+                "min_search_score": round(min(scores), 3),
+                "semantic_ranking_used": len(reranker_scores) > 0,
+                "average_reranker_score": round(sum(reranker_scores) / len(reranker_scores), 3) if reranker_scores else None
+            }
+        
+        return results
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Retrieval test failed: {str(e)}")

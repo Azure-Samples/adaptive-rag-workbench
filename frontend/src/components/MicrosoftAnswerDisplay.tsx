@@ -161,90 +161,16 @@ export function MicrosoftAnswerDisplay({
             </div>
           )}
           {answer && (
-            <div className="prose prose-lg max-w-none">
-              <ReactMarkdown 
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  p: ({ children }) => <p className="mb-4 text-gray-900 leading-relaxed text-left">{children}</p>,
-                  h1: ({ children }) => <h1 className="text-2xl font-bold mb-6 text-gray-900 text-left border-b border-gray-200 pb-2">{children}</h1>,
-                  h2: ({ children }) => <h2 className="text-xl font-semibold mb-4 text-gray-900 text-left">{children}</h2>,
-                  h3: ({ children }) => <h3 className="text-lg font-medium mb-3 text-gray-900 text-left">{children}</h3>,
-                  h4: ({ children }) => <h4 className="text-base font-medium mb-2 text-gray-900 text-left">{children}</h4>,
-                  ul: ({ children }) => <ul className="list-disc pl-6 mb-4 text-gray-900 text-left space-y-1">{children}</ul>,
-                  ol: ({ children }) => <ol className="list-decimal pl-6 mb-4 text-gray-900 text-left space-y-1">{children}</ol>,
-                  li: ({ children }) => <li className="text-gray-900 text-left leading-relaxed">{children}</li>,
-                  blockquote: ({ children }) => (
-                    <blockquote className="border-l-4 border-blue-500 pl-4 italic mb-4 text-gray-700 bg-gray-50 py-2 rounded-r text-left">
-                      {children}
-                    </blockquote>
-                  ),
-                  code: ({ children, className }) => {
-                    const isInline = !className;
-                    return isInline ? (
-                      <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono text-gray-800 border">
-                        {children}
-                      </code>
-                    ) : (
-                      <code className={`${className} bg-gray-900 text-gray-100 p-4 rounded-lg block text-sm font-mono text-left overflow-x-auto border`}>
-                        {children}
-                      </code>
-                    );
-                  },
-                  pre: ({ children }) => (
-                    <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono text-left overflow-x-auto mb-4 border">
-                      {children}
-                    </pre>
-                  ),
-                  table: ({ children }) => (
-                    <div className="overflow-x-auto mb-4">
-                      <table className="min-w-full border-collapse border border-gray-300 text-left">
-                        {children}
-                      </table>
-                    </div>
-                  ),
-                  thead: ({ children }) => (
-                    <thead className="bg-gray-50">
-                      {children}
-                    </thead>
-                  ),
-                  tbody: ({ children }) => (
-                    <tbody className="bg-white">
-                      {children}
-                    </tbody>
-                  ),
-                  tr: ({ children }) => (
-                    <tr className="border-b border-gray-200 hover:bg-gray-50">
-                      {children}
-                    </tr>
-                  ),
-                  th: ({ children }) => (
-                    <th className="border border-gray-300 px-4 py-2 text-left font-semibold text-gray-900 bg-gray-100">
-                      {children}
-                    </th>
-                  ),
-                  td: ({ children }) => (
-                    <td className="border border-gray-300 px-4 py-2 text-left text-gray-900">
-                      {children}
-                    </td>
-                  ),
-                  strong: ({ children }) => <strong className="font-semibold text-gray-900">{children}</strong>,
-                  em: ({ children }) => <em className="italic text-gray-800">{children}</em>,
-                  a: ({ children, href }) => (
-                    <a 
-                      href={href} 
-                      className="text-blue-600 hover:text-blue-800 underline transition-colors" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                    >
-                      {children}
-                    </a>
-                  ),
-                  hr: () => <hr className="my-6 border-gray-300" />,
-                }}
-              >
+            <div className="markdown-content">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {answer}
               </ReactMarkdown>
-              {isStreaming && <span className="animate-pulse text-gray-400">|</span>}
+              {isStreaming && (
+                <div className="mt-4 flex items-center space-x-3">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-500 border-t-transparent"></div>
+                  <span className="text-sm text-gray-600">Processing...</span>
+                </div>
+              )}
             </div>
           )}
           

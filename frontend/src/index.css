@@ -1,10 +1,10 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 @layer base {
   :root {
-    --radius: 0.5rem
-  ;
+    --radius: 0.5rem;
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
@@ -12,7 +12,8 @@
     --sidebar-accent: 240 4.8% 95.9%;
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%}
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
   .dark {
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
@@ -21,7 +22,69 @@
     --sidebar-accent: 240 3.7% 15.9%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer components {
+  .markdown-content {
+    @apply text-gray-800 leading-relaxed;
+  }
+  
+  .markdown-content h1 {
+    @apply text-3xl font-bold mb-6 mt-8 text-gray-900 border-b-2 border-gray-200 pb-3;
+  }
+  
+  .markdown-content h2 {
+    @apply text-2xl font-semibold mb-5 mt-7 text-gray-900 border-b border-gray-200 pb-2;
+  }
+  
+  .markdown-content h3 {
+    @apply text-xl font-semibold mb-4 mt-6 text-gray-900;
+  }
+  
+  .markdown-content h4 {
+    @apply text-lg font-medium mb-3 mt-5 text-gray-900;
+  }
+  
+  .markdown-content p {
+    @apply mb-4 text-gray-700 leading-7;
+  }
+  
+  .markdown-content ul {
+    @apply list-disc pl-6 mb-4 text-gray-700;
+  }
+  
+  .markdown-content ol {
+    @apply list-decimal pl-6 mb-4 text-gray-700;
+  }
+  
+  .markdown-content li {
+    @apply mb-1;
+  }
+  
+  .markdown-content strong {
+    @apply font-semibold text-gray-900;
+  }
+  
+  .markdown-content em {
+    @apply italic;
+  }
+  
+  .markdown-content blockquote {
+    @apply border-l-4 border-blue-500 pl-4 italic text-gray-600 mb-4 bg-blue-50 py-2;
+  }
+  
+  .markdown-content code {
+    @apply bg-gray-100 px-2 py-1 rounded text-sm font-mono text-red-600;
+  }
+  
+  .markdown-content pre {
+    @apply bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono overflow-x-auto mb-4;
+  }
+  
+  .markdown-content pre code {
+    @apply bg-transparent p-0 text-gray-100;
   }
 }
 

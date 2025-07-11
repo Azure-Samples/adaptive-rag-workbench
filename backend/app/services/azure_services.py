@@ -319,9 +319,21 @@ class AzureServiceManager:
             
             # Check if index exists
             try:
-                index = self.search_index_client.get_index(settings.search_index)
-                logger.info(f"Search index '{settings.search_index}' already exists with {len(index.fields)} fields")
-                return True
+                existing_index = self.search_index_client.get_index(settings.search_index)
+                logger.info(f"Search index '{settings.search_index}' already exists with {len(existing_index.fields)} fields")
+                
+                # Check if the index schema needs updating for facetable fields
+                needs_update = self._check_if_index_needs_facetable_update(existing_index)
+                
+                if needs_update:
+                    logger.info("Index schema needs updating for facetable fields. Recreating index...")
+                    # Delete the existing index
+                    self.search_index_client.delete_index(settings.search_index)
+                    logger.info(f"Deleted existing index '{settings.search_index}' for schema update")
+                    # Continue to create the new index
+                else:
+                    return True
+                    
             except Exception as e:
                 logger.info(f"Search index '{settings.search_index}' does not exist, creating it. Error: {e}")
 
@@ -337,26 +349,27 @@ class AzureServiceManager:
                 SearchableField(name="content", type=SearchFieldDataType.String),
                 SearchableField(name="title", type=SearchFieldDataType.String),
                 SimpleField(name="document_id", type=SearchFieldDataType.String, filterable=True),
-                SimpleField(name="source", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="source", type=SearchFieldDataType.String, filterable=True, facetable=True),
                 SimpleField(name="chunk_id", type=SearchFieldDataType.String, filterable=True),
-                SimpleField(name="document_type", type=SearchFieldDataType.String, filterable=True),
-                SimpleField(name="company", type=SearchFieldDataType.String, filterable=True),
-                SimpleField(name="filing_date", type=SearchFieldDataType.String, filterable=True),
-                SimpleField(name="section_type", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="document_type", type=SearchFieldDataType.String, filterable=True, facetable=True),
+                SimpleField(name="company", type=SearchFieldDataType.String, filterable=True, facetable=True),
+                SimpleField(name="filing_date", type=SearchFieldDataType.String, filterable=True, facetable=True),
+                SimpleField(name="section_type", type=SearchFieldDataType.String, filterable=True, facetable=True),
                 SimpleField(name="page_number", type=SearchFieldDataType.Int32, filterable=True),
                 SimpleField(name="credibility_score", type=SearchFieldDataType.Double, filterable=True),
                 SimpleField(name="processed_at", type=SearchFieldDataType.String, filterable=True),
-                SimpleField(name="citation_info", type=SearchFieldDataType.String),                # SEC-specific fields from Edgar tools
-                SimpleField(name="ticker", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="citation_info", type=SearchFieldDataType.String),
+                # SEC-specific fields from Edgar tools
+                SimpleField(name="ticker", type=SearchFieldDataType.String, filterable=True, facetable=True),
                 SimpleField(name="cik", type=SearchFieldDataType.String, filterable=True),
-                SimpleField(name="industry", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="industry", type=SearchFieldDataType.String, filterable=True, facetable=True),
                 SimpleField(name="sic", type=SearchFieldDataType.String, filterable=True),
-                SimpleField(name="entity_type", type=SearchFieldDataType.String, filterable=True),
-                SimpleField(name="form_type", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="entity_type", type=SearchFieldDataType.String, filterable=True, facetable=True),
+                SimpleField(name="form_type", type=SearchFieldDataType.String, filterable=True, facetable=True),
                 SimpleField(name="accession_number", type=SearchFieldDataType.String, filterable=True),
-                SimpleField(name="period_end_date", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="period_end_date", type=SearchFieldDataType.String, filterable=True, facetable=True),
                 SimpleField(name="chunk_index", type=SearchFieldDataType.Int32, filterable=True),
-                SimpleField(name="content_type", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="content_type", type=SearchFieldDataType.String, filterable=True, facetable=True),
                 SimpleField(name="chunk_method", type=SearchFieldDataType.String, filterable=True),
                 SimpleField(name="file_size", type=SearchFieldDataType.Int64, filterable=True),
                 SimpleField(name="document_url", type=SearchFieldDataType.String),
@@ -594,6 +607,34 @@ class AzureServiceManager:
             
             # Create fresh index
             return await self.ensure_search_index_exists()
+            
+        except Exception as e:
+            logger.error(f"Failed to recreate search index: {e}")
+            return False
+    
+    async def recreate_search_index_with_facetable_fields(self) -> bool:
+        """
+        Recreate the search index with facetable fields enabled.
+        WARNING: This will delete all existing data in the index.
+        """
+        try:
+            logger.warning("Recreating search index - this will delete all existing data!")
+            
+            # Delete existing index if it exists
+            try:
+                self.search_index_client.delete_index(settings.search_index)
+                logger.info(f"Deleted existing index '{settings.search_index}'")
+            except Exception as e:
+                logger.info(f"Index may not exist: {e}")
+            
+            # Create new index with facetable fields
+            result = await self.ensure_search_index_exists()
+            
+            if result:
+                logger.info("Successfully recreated search index with facetable fields")
+                logger.warning("You will need to re-ingest all documents to populate the new index")
+            
+            return result
             
         except Exception as e:
             logger.error(f"Failed to recreate search index: {e}")
@@ -895,7 +936,11 @@ class AzureServiceManager:
                         company_breakdown[facet['value']] = facet['count']
             except Exception as facet_error:
                 logger.warning(f"Failed to get company facets: {facet_error}")
-                company_breakdown = {}
+                logger.info("This might be due to the 'company' field not being facetable. Consider recreating the index.")
+                company_breakdown = {
+                    "note": "Company facets unavailable - field may not be facetable",
+                    "total_count": total_documents
+                }
             
             return {
                 "total_documents": total_documents,
@@ -1057,7 +1102,23 @@ This mock document represents a typical 10-K annual report structure with financ
     def embedding_client(self):
         """Property to access the embedding client (for status checks)"""
         return self.async_openai_client
-        
+    
+    def _check_if_index_needs_facetable_update(self, existing_index) -> bool:
+        """Check if the existing index needs to be updated for facetable fields"""
+        try:
+            # Check if the company field exists and is facetable
+            for field in existing_index.fields:
+                if field.name == "company":
+                    # If company field exists but is not facetable, we need to update
+                    if not getattr(field, 'facetable', False):
+                        logger.info("Company field exists but is not facetable. Index needs updating.")
+                        return True
+                    break
+            return False
+        except Exception as e:
+            logger.warning(f"Could not check index schema: {e}")
+            return False
+    
 # Global service manager instance
 azure_service_manager = AzureServiceManager()
 
