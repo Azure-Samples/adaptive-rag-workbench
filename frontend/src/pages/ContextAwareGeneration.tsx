@@ -3,11 +3,13 @@ import { ChatLayout } from '../components/ChatLayout';
 import { MicrosoftAnswerDisplay } from '../components/MicrosoftAnswerDisplay';
 import { MicrosoftInput } from '../components/MicrosoftInput';
 import { useChatStream } from '../hooks/useChatStream';
+import { useTheme } from '../contexts/ThemeContext';
 import { Sparkles } from 'lucide-react';
 
 type RAGMode = 'fast-rag' | 'agentic-rag' | 'deep-research-rag';
 
 export function ContextAwareGeneration() {
+  const { theme } = useTheme();
   const [query, setQuery] = useState('');
   const [selectedMode, setSelectedMode] = useState<RAGMode>('fast-rag');
   const { 
@@ -42,13 +44,18 @@ export function ContextAwareGeneration() {
     setQuery('');
   };
 
-
   const currentMessage = messages.length > 0 ? messages[messages.length - 1] : null;
   const hasResults = currentMessage && currentMessage.role === 'assistant';
 
   return (
     <ChatLayout>
-      <div className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 via-white to-blue-50/30">
+      <div className={`flex-1 overflow-y-auto ${
+        theme === 'dark' 
+          ? 'bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800' 
+          : theme === 'customer' 
+            ? 'bg-gradient-to-br from-customer-50 via-customer-50 to-customer-100' 
+            : 'bg-gradient-to-br from-background via-background to-primary/5'
+      }`}>
         {/* Content Area */}
         <div className="p-6">
           <div className="max-w-5xl mx-auto">
@@ -56,13 +63,31 @@ export function ContextAwareGeneration() {
               <div className="space-y-8">
                 {/* Welcome Message */}
                 <div className="text-center py-16">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 ${
+                    theme === 'dark' 
+                      ? 'bg-gradient-to-br from-gray-700 to-gray-600' 
+                      : theme === 'customer' 
+                        ? 'bg-gradient-to-br from-customer-500 to-customer-600' 
+                        : 'bg-gradient-to-br from-primary to-primary/80'
+                  }`}>
                     <Sparkles className="h-8 w-8 text-white" />
                   </div>
-                  <h2 className="text-3xl font-bold text-gray-900 mb-3">
+                  <h2 className={`text-3xl font-bold mb-3 ${
+                    theme === 'dark' 
+                      ? 'text-white' 
+                      : theme === 'customer' 
+                        ? 'text-customer-900' 
+                        : 'text-foreground'
+                  }`}>
                     Context-Aware Generation
                   </h2>
-                  <p className="text-lg text-gray-600 mb-12 max-w-2xl mx-auto">
+                  <p className={`text-lg mb-12 max-w-2xl mx-auto ${
+                    theme === 'dark' 
+                      ? 'text-gray-300' 
+                      : theme === 'customer' 
+                        ? 'text-customer-700' 
+                        : 'text-muted-foreground'
+                  }`}>
                     Generate contextually relevant content with intelligent document analysis
                   </p>
                 </div>

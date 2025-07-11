@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { MessageSquare, BarChart3, List, ExternalLink, Eye, Plus, RefreshCw } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '../auth/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface Citation {
   id: string;
@@ -66,6 +67,7 @@ export function MicrosoftAnswerDisplay({
   const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
   const [isLoadingFollowUp, setIsLoadingFollowUp] = useState(false);
   const { getAccessToken } = useAuth();
+  const { theme } = useTheme();
 
   const handleViewCitation = (citation: Citation) => {
     setSelectedCitation(citation);
@@ -131,33 +133,87 @@ export function MicrosoftAnswerDisplay({
 
 
   return (
-    <div>
+    <div className={`${
+      theme === 'dark' 
+        ? 'bg-gray-900 text-white' 
+        : theme === 'customer' 
+          ? 'bg-customer-50 text-customer-900' 
+          : 'bg-white text-gray-900'
+    }`}>
     <Tabs defaultValue="answer" className="w-full">
-      <TabsList className="grid w-full grid-cols-4">
-        <TabsTrigger value="answer" className="flex items-center gap-2">
+      <TabsList className={`grid w-full grid-cols-4 ${
+        theme === 'dark' 
+          ? 'bg-gray-800 border-gray-700' 
+          : theme === 'customer' 
+            ? 'bg-customer-100 border-customer-200' 
+            : 'bg-gray-50 border-gray-200'
+      }`}>
+        <TabsTrigger value="answer" className={`flex items-center gap-2 ${
+          theme === 'dark' 
+            ? 'text-gray-300 hover:text-white data-[state=active]:bg-gray-700 data-[state=active]:text-white' 
+            : theme === 'customer' 
+              ? 'text-customer-700 hover:text-customer-900 data-[state=active]:bg-customer-500 data-[state=active]:text-white' 
+              : 'text-gray-700 hover:text-gray-900 data-[state=active]:bg-white data-[state=active]:text-gray-900'
+        }`}>
           <MessageSquare className="h-4 w-4" />
           Answer
         </TabsTrigger>
-        <TabsTrigger value="sources" className="flex items-center gap-2">
+        <TabsTrigger value="sources" className={`flex items-center gap-2 ${
+          theme === 'dark' 
+            ? 'text-gray-300 hover:text-white data-[state=active]:bg-gray-700 data-[state=active]:text-white' 
+            : theme === 'customer' 
+              ? 'text-customer-700 hover:text-customer-900 data-[state=active]:bg-customer-500 data-[state=active]:text-white' 
+              : 'text-gray-700 hover:text-gray-900 data-[state=active]:bg-white data-[state=active]:text-gray-900'
+        }`}>
           <ExternalLink className="h-4 w-4" />
           Sources {citations && citations.length > 0 && `• ${citations.length}`}
         </TabsTrigger>
-        <TabsTrigger value="steps" className="flex items-center gap-2">
+        <TabsTrigger value="steps" className={`flex items-center gap-2 ${
+          theme === 'dark' 
+            ? 'text-gray-300 hover:text-white data-[state=active]:bg-gray-700 data-[state=active]:text-white' 
+            : theme === 'customer' 
+              ? 'text-customer-700 hover:text-customer-900 data-[state=active]:bg-customer-500 data-[state=active]:text-white' 
+              : 'text-gray-700 hover:text-gray-900 data-[state=active]:bg-white data-[state=active]:text-gray-900'
+        }`}>
           <List className="h-4 w-4" />
           Steps
         </TabsTrigger>
-        <TabsTrigger value="tokens" className="flex items-center gap-2">
+        <TabsTrigger value="tokens" className={`flex items-center gap-2 ${
+          theme === 'dark' 
+            ? 'text-gray-300 hover:text-white data-[state=active]:bg-gray-700 data-[state=active]:text-white' 
+            : theme === 'customer' 
+              ? 'text-customer-700 hover:text-customer-900 data-[state=active]:bg-customer-500 data-[state=active]:text-white' 
+              : 'text-gray-700 hover:text-gray-900 data-[state=active]:bg-white data-[state=active]:text-gray-900'
+        }`}>
           <BarChart3 className="h-4 w-4" />
           Token Usage
         </TabsTrigger>
       </TabsList>
 
       <TabsContent value="answer" className="mt-6">
-        <Card className="p-6">
+        <Card className={`p-6 ${
+          theme === 'dark' 
+            ? 'bg-gray-800 border-gray-700' 
+            : theme === 'customer' 
+              ? 'bg-customer-50 border-customer-200' 
+              : 'bg-white border-gray-200'
+        }`}>
           {isStreaming && !answer && (
             <div className="flex items-center space-x-3">
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-500 border-t-transparent"></div>
-              <span className="text-sm text-gray-600">Generating response...</span>
+              <div className={`animate-spin rounded-full h-4 w-4 border-2 border-t-transparent ${
+                theme === 'dark' 
+                  ? 'border-gray-400' 
+                  : theme === 'customer' 
+                    ? 'border-customer-500' 
+                    : 'border-gray-500'
+              }`}></div>
+              <span className={`text-sm ${
+                theme === 'dark' 
+                  ? 'text-gray-300' 
+                  : theme === 'customer' 
+                    ? 'text-customer-700' 
+                    : 'text-gray-600'
+              }`}>Generating response...</span>
             </div>
           )}
           {answer && (
@@ -316,7 +372,7 @@ export function MicrosoftAnswerDisplay({
               
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-xs font-medium text-blue-600">
+                  <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center text-xs font-medium text-primary">
                     1
                   </div>
                   <div className="flex-1">
@@ -404,8 +460,8 @@ export function MicrosoftAnswerDisplay({
               <h3 className="font-medium text-gray-900">Token Usage Statistics</h3>
               
               <div className="grid grid-cols-3 gap-4">
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600">{tokenUsage.prompt_tokens}</div>
+                <div className="text-center p-4 bg-primary/10 rounded-lg">
+                  <div className="text-2xl font-bold text-primary">{tokenUsage.prompt_tokens}</div>
                   <div className="text-sm text-gray-600">Prompt Tokens</div>
                 </div>
                 <div className="text-center p-4 bg-green-50 rounded-lg">
