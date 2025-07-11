@@ -72,8 +72,8 @@ export function TokenUsageDisplay({ tokenUsage, processingMetadata, ragMode }: T
         
         {/* Token Usage Overview */}
         <div className="grid grid-cols-3 gap-4">
-          <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-100">
-            <div className="text-2xl font-bold text-blue-600">{tokenUsage.prompt_tokens.toLocaleString()}</div>
+          <div className="text-center p-4 bg-primary/10 rounded-lg border border-primary/20">
+            <div className="text-2xl font-bold text-primary">{tokenUsage.prompt_tokens.toLocaleString()}</div>
             <div className="text-sm text-gray-600">Prompt Tokens</div>
             <div className="text-xs text-gray-500 mt-1">Input</div>
           </div>
@@ -121,12 +121,12 @@ export function TokenUsageDisplay({ tokenUsage, processingMetadata, ragMode }: T
               Performance Metrics
             </h4>
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+              <div className="bg-primary/10 rounded-lg p-4 border border-primary/20">
                 <div className="flex items-center gap-2 mb-2">
-                  <Clock className="h-4 w-4 text-blue-600" />
+                  <Clock className="h-4 w-4 text-primary" />
                   <span className="text-sm font-medium text-gray-700">Processing Time</span>
                 </div>
-                <div className="text-xl font-bold text-blue-600">
+                <div className="text-xl font-bold text-primary">
                   {processingMetadata.processing_time_ms}ms
                 </div>
                 <div className="text-xs text-gray-500">
@@ -180,14 +180,14 @@ export function TokenUsageDisplay({ tokenUsage, processingMetadata, ragMode }: T
         <div className="space-y-3">
           <h4 className="font-medium text-gray-900">Efficiency Analysis</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
-              <div className="font-medium text-blue-900 mb-1">Input Efficiency</div>
-              <div className="text-blue-700">
+            <div className="bg-primary/10 rounded-lg p-3 border border-primary/20">
+              <div className="font-medium text-primary mb-1">Input Efficiency</div>
+              <div className="text-primary">
                 {tokenUsage.prompt_tokens < 1000 ? 'Excellent' : 
                  tokenUsage.prompt_tokens < 2000 ? 'Good' : 
                  tokenUsage.prompt_tokens < 4000 ? 'Moderate' : 'High Usage'}
               </div>
-              <div className="text-xs text-blue-600 mt-1">
+              <div className="text-xs text-primary mt-1">
                 {tokenUsage.prompt_tokens < 1000 ? 'Concise prompting' : 
                  tokenUsage.prompt_tokens < 2000 ? 'Reasonable context' : 
                  'Consider prompt optimization'}
@@ -216,7 +216,7 @@ export function TokenUsageDisplay({ tokenUsage, processingMetadata, ragMode }: T
           <div className="relative">
             <div className="flex h-4 bg-gray-200 rounded-full overflow-hidden">
               <div 
-                className="bg-blue-500 transition-all duration-300"
+                className="bg-primary transition-all duration-300"
                 style={{ width: `${(inputCost / totalCost) * 100}%` }}
                 title={`Input: ${((inputCost / totalCost) * 100).toFixed(1)}%`}
               />

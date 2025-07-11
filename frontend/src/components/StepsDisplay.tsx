@@ -36,7 +36,7 @@ export function StepsDisplay({ queryRewrites, ragMode, processingMetadata }: Ste
         
         <div className="space-y-3">
           <div className="flex items-start gap-3">
-            <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-xs font-medium text-blue-600">
+            <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center text-xs font-medium text-primary">
               1
             </div>
             <div className="flex-1">

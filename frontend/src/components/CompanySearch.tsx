@@ -5,6 +5,7 @@ import { Input } from './ui/input';
 import { Checkbox } from './ui/checkbox';
 import { Search, FileText, Calendar, Building2, Download, ExternalLink, Loader2, Globe, Play } from 'lucide-react';
 import { apiService } from '../services/api';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface DocumentResult {
   id: string;
@@ -34,6 +35,8 @@ interface SearchFilters {
 }
 
 export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
+  const { theme } = useTheme();
+  
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({
     company: '',
     documentTypes: ['10-K'],
@@ -358,21 +361,57 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
   };
 
   return (
-    <Card className="p-8 bg-gradient-to-br from-white to-gray-50 border-gray-200 shadow-xl">
+    <Card className={`p-8 border shadow-xl ${
+      theme === 'dark' 
+        ? 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700' 
+        : theme === 'customer' 
+          ? 'bg-gradient-to-br from-customer-50 to-customer-100 border-customer-200' 
+          : 'bg-gradient-to-br from-white to-gray-50 border-gray-200'
+    }`}>
       <div className="flex items-center space-x-4 mb-8">
-        <div className="w-12 h-12 bg-gradient-to-br from-microsoft-purple to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg ${
+          theme === 'dark' 
+            ? 'bg-gradient-to-br from-gray-600 to-gray-700' 
+            : theme === 'customer' 
+              ? 'bg-gradient-to-br from-customer-500 to-customer-600' 
+              : 'bg-gradient-to-br from-microsoft-purple to-purple-600'
+        }`}>
           <Search className="h-6 w-6 text-white" />
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-microsoft-gray">Document Search & Process</h3>
-          <p className="text-gray-600 mt-1">Search for SEC filings and website content, then process them into the vector store with intelligent chunking and metadata extraction</p>
+          <h3 className={`text-2xl font-bold ${
+            theme === 'dark' 
+              ? 'text-white' 
+              : theme === 'customer' 
+                ? 'text-customer-900' 
+                : 'text-microsoft-gray'
+          }`}>Document Search & Process</h3>
+          <p className={`mt-1 ${
+            theme === 'dark' 
+              ? 'text-gray-300' 
+              : theme === 'customer' 
+                ? 'text-customer-700' 
+                : 'text-gray-600'
+          }`}>Search for SEC filings and website content, then process them into the vector store with intelligent chunking and metadata extraction</p>
         </div>
       </div>
 
       <div className="space-y-6">
         {/* Search Type Selection */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <label className="block text-sm font-semibold text-gray-800 mb-4">
+        <div className={`p-6 rounded-xl border shadow-sm ${
+          theme === 'dark' 
+            ? 'bg-gray-800 border-gray-700' 
+            : theme === 'customer' 
+              ? 'bg-customer-50 border-customer-200' 
+              : 'bg-white border-gray-200'
+        }`}>
+          <label className={`block text-sm font-semibold mb-4 ${
+            theme === 'dark' 
+              ? 'text-white' 
+              : theme === 'customer' 
+                ? 'text-customer-900' 
+                : 'text-gray-800'
+          }`}>
             Search Type
           </label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -383,22 +422,50 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
                   key={type.value}
                   className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
                     searchFilters.searchType === type.value
-                      ? 'border-microsoft-purple bg-microsoft-purple/5 shadow-md'
-                      : 'border-gray-200 hover:border-microsoft-purple/30 hover:bg-gray-50'
+                      ? theme === 'dark' 
+                        ? 'border-gray-500 bg-gray-700/50 shadow-md' 
+                        : theme === 'customer' 
+                          ? 'border-customer-500 bg-customer-100/50 shadow-md' 
+                          : 'border-microsoft-purple bg-microsoft-purple/5 shadow-md'
+                      : theme === 'dark' 
+                        ? 'border-gray-600 hover:border-gray-500 hover:bg-gray-700/30' 
+                        : theme === 'customer' 
+                          ? 'border-customer-200 hover:border-customer-400 hover:bg-customer-50' 
+                          : 'border-gray-200 hover:border-microsoft-purple/30 hover:bg-gray-50'
                   }`}
                   onClick={() => handleSearchTypeChange(type.value as 'company' | 'website')}
                 >
                   <div className="flex items-center space-x-3">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                       searchFilters.searchType === type.value
-                        ? 'bg-microsoft-purple text-white'
-                        : 'bg-gray-100 text-gray-600'
+                        ? theme === 'dark' 
+                          ? 'bg-gray-600 text-white' 
+                          : theme === 'customer' 
+                            ? 'bg-customer-500 text-white' 
+                            : 'bg-microsoft-purple text-white'
+                        : theme === 'dark' 
+                          ? 'bg-gray-700 text-gray-300' 
+                          : theme === 'customer' 
+                            ? 'bg-customer-100 text-customer-600' 
+                            : 'bg-gray-100 text-gray-600'
                     }`}>
                       <IconComponent className="h-5 w-5" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-gray-800">{type.label}</h4>
-                      <p className="text-sm text-gray-600">{type.description}</p>
+                      <h4 className={`font-semibold ${
+                        theme === 'dark' 
+                          ? 'text-white' 
+                          : theme === 'customer' 
+                            ? 'text-customer-900' 
+                            : 'text-gray-800'
+                      }`}>{type.label}</h4>
+                      <p className={`text-sm ${
+                        theme === 'dark' 
+                          ? 'text-gray-300' 
+                          : theme === 'customer' 
+                            ? 'text-customer-700' 
+                            : 'text-gray-600'
+                      }`}>{type.description}</p>
                     </div>
                   </div>
                 </div>
@@ -408,8 +475,20 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
         </div>
 
         {/* Company/Website Input */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <label className="block text-sm font-semibold text-gray-800 mb-3">
+        <div className={`p-6 rounded-xl border shadow-sm ${
+          theme === 'dark' 
+            ? 'bg-gray-800 border-gray-700' 
+            : theme === 'customer' 
+              ? 'bg-customer-50 border-customer-200' 
+              : 'bg-white border-gray-200'
+        }`}>
+          <label className={`block text-sm font-semibold mb-3 ${
+            theme === 'dark' 
+              ? 'text-white' 
+              : theme === 'customer' 
+                ? 'text-customer-900' 
+                : 'text-gray-800'
+          }`}>
             {searchFilters.searchType === 'company' ? 'Company Ticker or Name' : 'Website URL or Company Name'}
           </label>
           <Input
@@ -421,9 +500,21 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
             value={searchFilters.company}
             onChange={(e) => setSearchFilters(prev => ({ ...prev, company: e.target.value }))}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            className="w-full h-12 text-lg border-2 border-gray-200 focus:border-microsoft-purple focus:ring-2 focus:ring-microsoft-purple/20 rounded-lg"
+            className={`w-full h-12 text-lg border-2 rounded-lg focus:ring-2 focus:ring-opacity-20 ${
+              theme === 'dark' 
+                ? 'bg-gray-700 border-gray-600 text-white focus:border-gray-500 focus:ring-gray-500 placeholder-gray-400' 
+                : theme === 'customer' 
+                  ? 'bg-white border-customer-300 text-customer-900 focus:border-customer-500 focus:ring-customer-500 placeholder-customer-500' 
+                  : 'bg-white border-gray-200 text-gray-900 focus:border-microsoft-purple focus:ring-microsoft-purple placeholder-gray-500'
+            }`}
           />
-          <p className="text-xs text-gray-500 mt-2">
+          <p className={`text-xs mt-2 ${
+            theme === 'dark' 
+              ? 'text-gray-400' 
+              : theme === 'customer' 
+                ? 'text-customer-600' 
+                : 'text-gray-500'
+          }`}>
             {searchFilters.searchType === 'company' 
               ? 'Enter a company ticker symbol or full company name'
               : 'Enter a website URL or company name to search for relevant web content'
@@ -433,9 +524,21 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
 
         {/* Document Types - Only show for company search */}
         {searchFilters.searchType === 'company' && (
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div className={`p-6 rounded-xl border shadow-sm ${
+            theme === 'dark' 
+              ? 'bg-gray-800 border-gray-700' 
+              : theme === 'customer' 
+                ? 'bg-customer-50 border-customer-200' 
+                : 'bg-white border-gray-200'
+          }`}>
             <div className="flex items-center justify-between mb-4">
-              <label className="block text-sm font-semibold text-gray-800">
+              <label className={`block text-sm font-semibold ${
+                theme === 'dark' 
+                  ? 'text-white' 
+                  : theme === 'customer' 
+                    ? 'text-customer-900' 
+                    : 'text-gray-800'
+              }`}>
                 Document Types
               </label>
               <div className="flex space-x-2">
@@ -461,7 +564,13 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {availableDocumentTypes.map((docType) => (
-                <div key={docType.value} className="flex items-start space-x-3 p-3 rounded-lg border border-gray-100 hover:border-microsoft-purple/30 hover:bg-microsoft-purple/5 transition-colors">
+                <div key={docType.value} className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors ${
+                  theme === 'dark' 
+                    ? 'border-gray-600 hover:border-gray-500 hover:bg-gray-700/50' 
+                    : theme === 'customer' 
+                      ? 'border-customer-200 hover:border-customer-400 hover:bg-customer-100/50' 
+                      : 'border-gray-100 hover:border-microsoft-purple/30 hover:bg-microsoft-purple/5'
+                }`}>
                   <Checkbox
                     id={docType.value}
                     checked={searchFilters.documentTypes.includes(docType.value)}
@@ -469,10 +578,22 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
                     className="mt-1"
                   />
                   <div className="flex-1">
-                    <label htmlFor={docType.value} className="text-sm font-medium text-gray-800 cursor-pointer block">
+                    <label htmlFor={docType.value} className={`text-sm font-medium cursor-pointer block ${
+                      theme === 'dark' 
+                        ? 'text-white' 
+                        : theme === 'customer' 
+                          ? 'text-customer-900' 
+                          : 'text-gray-800'
+                    }`}>
                       {docType.label}
                     </label>
-                    <p className="text-xs text-gray-500 mt-1">{docType.description}</p>
+                    <p className={`text-xs mt-1 ${
+                      theme === 'dark' 
+                        ? 'text-gray-400' 
+                        : theme === 'customer' 
+                          ? 'text-customer-600' 
+                          : 'text-gray-500'
+                    }`}>{docType.description}</p>
                   </div>
                 </div>
               ))}
@@ -482,9 +603,21 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
 
         {/* Years - Only show for company search */}
         {searchFilters.searchType === 'company' && (
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div className={`p-6 rounded-xl border shadow-sm ${
+            theme === 'dark' 
+              ? 'bg-gray-800 border-gray-700' 
+              : theme === 'customer' 
+                ? 'bg-customer-50 border-customer-200' 
+                : 'bg-white border-gray-200'
+          }`}>
             <div className="flex items-center justify-between mb-4">
-              <label className="block text-sm font-semibold text-gray-800">
+              <label className={`block text-sm font-semibold ${
+                theme === 'dark' 
+                  ? 'text-white' 
+                  : theme === 'customer' 
+                    ? 'text-customer-900' 
+                    : 'text-gray-800'
+              }`}>
                 Years
               </label>
               <div className="flex space-x-2">
@@ -519,13 +652,25 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {availableYears.map((year) => (
-                <div key={year} className="flex items-center space-x-2 p-3 rounded-lg border border-gray-100 hover:border-microsoft-purple/30 hover:bg-microsoft-purple/5 transition-colors">
+                <div key={year} className={`flex items-center space-x-2 p-3 rounded-lg border transition-colors ${
+                  theme === 'dark' 
+                    ? 'border-gray-600 hover:border-gray-500 hover:bg-gray-700/50' 
+                    : theme === 'customer' 
+                      ? 'border-customer-200 hover:border-customer-400 hover:bg-customer-100/50' 
+                      : 'border-gray-100 hover:border-microsoft-purple/30 hover:bg-microsoft-purple/5'
+                }`}>
                   <Checkbox
                     id={`year-${year}`}
                     checked={searchFilters.years.includes(year)}
                     onCheckedChange={(checked) => handleYearChange(year, checked as boolean)}
                   />
-                  <label htmlFor={`year-${year}`} className="text-sm font-medium text-gray-700 cursor-pointer">
+                  <label htmlFor={`year-${year}`} className={`text-sm font-medium cursor-pointer ${
+                    theme === 'dark' 
+                      ? 'text-white' 
+                      : theme === 'customer' 
+                        ? 'text-customer-900' 
+                        : 'text-gray-700'
+                  }`}>
                     {year}
                   </label>
                 </div>
@@ -535,12 +680,24 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
         )}
 
         {/* Search Button */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+        <div className={`p-6 rounded-xl border shadow-sm ${
+          theme === 'dark' 
+            ? 'bg-gray-800 border-gray-700' 
+            : theme === 'customer' 
+              ? 'bg-customer-50 border-customer-200' 
+              : 'bg-white border-gray-200'
+        }`}>
           <Button
             onClick={handleSearch}
             disabled={isSearching || !searchFilters.company.trim() || 
               (searchFilters.searchType === 'company' && (searchFilters.documentTypes.length === 0 || searchFilters.years.length === 0))}
-            className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-microsoft-purple to-purple-600 hover:from-microsoft-purple/90 hover:to-purple-600/90 shadow-lg hover:shadow-xl transition-all duration-200"
+            className={`w-full h-14 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 ${
+              theme === 'dark' 
+                ? 'bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 text-white' 
+                : theme === 'customer' 
+                  ? 'bg-gradient-to-r from-customer-500 to-customer-600 hover:from-customer-400 hover:to-customer-500 text-white' 
+                  : 'bg-gradient-to-r from-microsoft-purple to-purple-600 hover:from-microsoft-purple/90 hover:to-purple-600/90 text-white'
+            }`}
           >
             {isSearching ? (
               <>
@@ -556,7 +713,13 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
           </Button>
           {(!searchFilters.company.trim() || 
             (searchFilters.searchType === 'company' && (searchFilters.documentTypes.length === 0 || searchFilters.years.length === 0))) && (
-            <p className="text-xs text-gray-500 mt-2 text-center">
+            <p className={`text-xs mt-2 text-center ${
+              theme === 'dark' 
+                ? 'text-gray-400' 
+                : theme === 'customer' 
+                  ? 'text-customer-600' 
+                  : 'text-gray-500'
+            }`}>
               {searchFilters.searchType === 'company' 
                 ? 'Please enter a company name and select at least one document type and year'
                 : 'Please enter a website URL or company name to search'
@@ -567,12 +730,30 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
 
         {/* Search Results */}
         {searchResults.length > 0 && (
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div className={`p-6 rounded-xl border shadow-sm ${
+            theme === 'dark' 
+              ? 'bg-gray-800 border-gray-700' 
+              : theme === 'customer' 
+                ? 'bg-customer-50 border-customer-200' 
+                : 'bg-white border-gray-200'
+          }`}>
             <div className="flex items-center justify-between mb-6">
-              <h4 className="text-xl font-bold text-microsoft-gray">
+              <h4 className={`text-xl font-bold ${
+                theme === 'dark' 
+                  ? 'text-white' 
+                  : theme === 'customer' 
+                    ? 'text-customer-900' 
+                    : 'text-microsoft-gray'
+              }`}>
                 Found {searchResults.length} Documents
               </h4>
-              <div className="flex items-center space-x-2 text-sm text-gray-500">
+              <div className={`flex items-center space-x-2 text-sm ${
+                theme === 'dark' 
+                  ? 'text-gray-400' 
+                  : theme === 'customer' 
+                    ? 'text-customer-600' 
+                    : 'text-gray-500'
+              }`}>
                 <FileText className="h-4 w-4" />
                 <span>Ready for processing</span>
               </div>
@@ -580,7 +761,13 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
 
             {/* Batch Processing Controls - Only for company search */}
             {searchFilters.searchType === 'company' && (
-              <div className="mb-6 p-4 bg-gradient-to-r from-microsoft-purple/5 to-purple-50 rounded-xl border border-microsoft-purple/20">
+              <div className={`mb-6 p-4 rounded-xl border ${
+                theme === 'dark' 
+                  ? 'bg-gradient-to-r from-gray-700/50 to-gray-600/50 border-gray-600' 
+                  : theme === 'customer' 
+                    ? 'bg-gradient-to-r from-customer-100/50 to-customer-200/50 border-customer-300' 
+                    : 'bg-gradient-to-r from-microsoft-purple/5 to-purple-50 border-microsoft-purple/20'
+              }`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-2">
@@ -595,7 +782,13 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
                           }
                         }}
                       />
-                      <label htmlFor="select-all" className="text-sm font-medium text-gray-700 cursor-pointer">
+                      <label htmlFor="select-all" className={`text-sm font-medium cursor-pointer ${
+                        theme === 'dark' 
+                          ? 'text-white' 
+                          : theme === 'customer' 
+                            ? 'text-customer-900' 
+                            : 'text-gray-700'
+                      }`}>
                         Select All ({selectedDocuments.size} of {searchResults.length})
                       </label>
                     </div>
@@ -612,7 +805,13 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
                   <Button
                     onClick={processSelectedDocuments}
                     disabled={selectedDocuments.size === 0 || isBatchProcessing}
-                    className="bg-gradient-to-r from-microsoft-purple to-purple-600 hover:from-microsoft-purple/90 hover:to-purple-600/90 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 disabled:opacity-50"
+                    className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 ${
+                      theme === 'dark' 
+                        ? 'bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 text-white' 
+                        : theme === 'customer' 
+                          ? 'bg-gradient-to-r from-customer-500 to-customer-600 hover:from-customer-400 hover:to-customer-500 text-white' 
+                          : 'bg-gradient-to-r from-microsoft-purple to-purple-600 hover:from-microsoft-purple/90 hover:to-purple-600/90 text-white'
+                    }`}
                   >
                     {isBatchProcessing ? (
                       <>
@@ -632,29 +831,77 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
 
             {/* Batch Progress Display */}
             {batchProgress && (
-              <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+              <div className={`mb-6 p-4 rounded-xl border ${
+                theme === 'dark' 
+                  ? 'bg-gray-800/50 border-gray-600' 
+                  : theme === 'customer' 
+                    ? 'bg-customer-50 border-customer-200' 
+                    : 'bg-primary/10 border-primary/20'
+              }`}>
                 <div className="flex items-center justify-between mb-3">
-                  <h5 className="font-semibold text-blue-900">Batch Processing Progress</h5>
-                  <span className="text-sm text-blue-700">
+                  <h5 className={`font-semibold ${
+                    theme === 'dark' 
+                      ? 'text-gray-300' 
+                      : theme === 'customer' 
+                        ? 'text-customer-800' 
+                        : 'text-primary'
+                  }`}>Batch Processing Progress</h5>
+                  <span className={`text-sm ${
+                    theme === 'dark' 
+                      ? 'text-gray-400' 
+                      : theme === 'customer' 
+                        ? 'text-customer-700' 
+                        : 'text-primary'
+                  }`}>
                     {batchProgress.completed_documents} of {batchProgress.total_documents} completed
                   </span>
                 </div>
-                <div className="w-full bg-blue-200 rounded-full h-2 mb-3">
+                <div className={`w-full rounded-full h-2 mb-3 ${
+                  theme === 'dark' 
+                    ? 'bg-gray-800' 
+                    : theme === 'customer' 
+                      ? 'bg-customer-200' 
+                      : 'bg-primary/20'
+                }`}>
                   <div 
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+                    className={`h-2 rounded-full transition-all duration-500 ${
+                      theme === 'dark' 
+                        ? 'bg-gray-500' 
+                        : theme === 'customer' 
+                          ? 'bg-customer-500' 
+                          : 'bg-primary'
+                    }`}
                     style={{ width: `${batchProgress.overall_progress_percent}%` }}
                   />
                 </div>
-                <div className="text-xs text-blue-700">
+                <div className={`text-xs ${
+                  theme === 'dark' 
+                    ? 'text-gray-400' 
+                    : theme === 'customer' 
+                      ? 'text-customer-700' 
+                      : 'text-primary'
+                }`}>
                   Status: {batchProgress.status} | Progress: {batchProgress.overall_progress_percent.toFixed(1)}%
                 </div>
                 {batchProgress.message && (
-                  <div className="mt-2 text-sm text-blue-800 font-medium">
+                  <div className={`mt-2 text-sm font-medium ${
+                    theme === 'dark' 
+                      ? 'text-gray-300' 
+                      : theme === 'customer' 
+                        ? 'text-customer-800' 
+                        : 'text-primary'
+                  }`}>
                     {batchProgress.message}
                   </div>
                 )}
                 {batchProgress.current_processing.length > 0 && (
-                  <div className="mt-2 text-xs text-blue-600">
+                  <div className={`mt-2 text-xs ${
+                    theme === 'dark' 
+                      ? 'text-gray-400' 
+                      : theme === 'customer' 
+                        ? 'text-customer-600' 
+                        : 'text-primary'
+                  }`}>
                     Currently processing: {batchProgress.current_processing.map(p => `${p.ticker} (${p.stage})`).join(', ')}
                   </div>
                 )}
@@ -663,25 +910,55 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
 
             {/* Batch Error Display */}
             {batchError && (
-              <div className="mb-6 p-4 bg-red-50 rounded-xl border border-red-200">
+              <div className={`mb-6 p-4 rounded-xl border ${
+                theme === 'dark' 
+                  ? 'bg-red-900/50 border-red-700' 
+                  : theme === 'customer' 
+                    ? 'bg-red-50 border-red-200' 
+                    : 'bg-red-50 border-red-200'
+              }`}>
                 <div className="flex items-center justify-between">
-                  <h5 className="font-semibold text-red-900">Batch Processing Error</h5>
+                  <h5 className={`font-semibold ${
+                    theme === 'dark' 
+                      ? 'text-red-300' 
+                      : theme === 'customer' 
+                        ? 'text-red-800' 
+                        : 'text-red-900'
+                  }`}>Batch Processing Error</h5>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setBatchError(null)}
-                    className="text-red-600 hover:text-red-700"
+                    className={`${
+                      theme === 'dark' 
+                        ? 'text-red-400 hover:text-red-300' 
+                        : theme === 'customer' 
+                          ? 'text-red-600 hover:text-red-700' 
+                          : 'text-red-600 hover:text-red-700'
+                    }`}
                   >
                     ×
                   </Button>
                 </div>
-                <p className="text-sm text-red-700 mt-2">{batchError}</p>
+                <p className={`text-sm mt-2 ${
+                  theme === 'dark' 
+                    ? 'text-red-400' 
+                    : theme === 'customer' 
+                      ? 'text-red-700' 
+                      : 'text-red-700'
+                }`}>{batchError}</p>
               </div>
             )}
 
             <div className="space-y-4 max-h-96 overflow-y-auto">
               {searchResults.map((doc, index) => (
-                <div key={index} className="p-5 border border-gray-200 rounded-xl bg-gradient-to-r from-gray-50 to-white hover:from-microsoft-purple/5 hover:to-purple-50 transition-all duration-200 hover:shadow-md">
+                <div key={index} className={`p-5 border rounded-xl transition-all duration-200 hover:shadow-md ${
+                  theme === 'dark' 
+                    ? 'bg-gradient-to-r from-gray-800 to-gray-700 border-gray-600 hover:from-gray-700 hover:to-gray-600' 
+                    : theme === 'customer' 
+                      ? 'bg-gradient-to-r from-customer-50 to-customer-100 border-customer-200 hover:from-customer-100 hover:to-customer-200' 
+                      : 'bg-gradient-to-r from-gray-50 to-white border-gray-200 hover:from-microsoft-purple/5 hover:to-purple-50'
+                }`}>
                   <div className="flex items-start justify-between">
                     <div className="flex items-start space-x-3">
                       {/* Checkbox for batch selection - Only for company search */}
@@ -695,24 +972,72 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
                       )}
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-3">
-                          <div className="w-8 h-8 bg-microsoft-purple/10 rounded-lg flex items-center justify-center">
-                            <FileText className="h-4 w-4 text-microsoft-purple" />
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                            theme === 'dark' 
+                              ? 'bg-gray-600' 
+                              : theme === 'customer' 
+                                ? 'bg-customer-200' 
+                                : 'bg-microsoft-purple/10'
+                          }`}>
+                            <FileText className={`h-4 w-4 ${
+                              theme === 'dark' 
+                                ? 'text-gray-300' 
+                                : theme === 'customer' 
+                                  ? 'text-customer-600' 
+                                  : 'text-microsoft-purple'
+                            }`} />
                           </div>
                           <div>
-                            <span className="font-semibold text-microsoft-gray text-lg">{doc.company}</span>
-                            <span className="ml-2 px-2 py-1 bg-microsoft-purple/10 text-microsoft-purple text-xs font-medium rounded-full">
+                            <span className={`font-semibold text-lg ${
+                              theme === 'dark' 
+                                ? 'text-white' 
+                                : theme === 'customer' 
+                                  ? 'text-customer-900' 
+                                  : 'text-microsoft-gray'
+                            }`}>{doc.company}</span>
+                            <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${
+                              theme === 'dark' 
+                                ? 'bg-gray-600 text-gray-200' 
+                                : theme === 'customer' 
+                                  ? 'bg-customer-200 text-customer-800' 
+                                  : 'bg-microsoft-purple/10 text-microsoft-purple'
+                            }`}>
                               {doc.document_type}
                             </span>
                           </div>
                         </div>
-                        <p className="text-gray-700 mb-3 font-medium">{doc.title}</p>
-                        <div className="flex items-center space-x-6 text-sm text-gray-600">
+                        <p className={`mb-3 font-medium ${
+                          theme === 'dark' 
+                            ? 'text-gray-200' 
+                            : theme === 'customer' 
+                              ? 'text-customer-800' 
+                              : 'text-gray-700'
+                        }`}>{doc.title}</p>
+                        <div className={`flex items-center space-x-6 text-sm ${
+                          theme === 'dark' 
+                            ? 'text-gray-300' 
+                            : theme === 'customer' 
+                              ? 'text-customer-700' 
+                              : 'text-gray-600'
+                        }`}>
                           <span className="flex items-center">
-                            <Calendar className="h-4 w-4 mr-2 text-microsoft-purple" />
+                            <Calendar className={`h-4 w-4 mr-2 ${
+                              theme === 'dark' 
+                                ? 'text-gray-400' 
+                                : theme === 'customer' 
+                                  ? 'text-customer-500' 
+                                  : 'text-microsoft-purple'
+                            }`} />
                             Filed: {doc.filing_date}
                           </span>
                           <span className="flex items-center">
-                            <Building2 className="h-4 w-4 mr-2 text-microsoft-purple" />
+                            <Building2 className={`h-4 w-4 mr-2 ${
+                              theme === 'dark' 
+                                ? 'text-gray-400' 
+                                : theme === 'customer' 
+                                  ? 'text-customer-500' 
+                                  : 'text-microsoft-purple'
+                            }`} />
                             CIK: {doc.cik}
                           </span>
                         </div>
