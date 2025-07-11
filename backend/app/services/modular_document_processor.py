@@ -4,7 +4,7 @@ import time
 import json
 from pathlib import Path
 from typing import Dict, Any, Optional, Callable
-from ..ingestion.di_extract import extract_content_from_pdf, extract_content_from_html
+from ..ingestion.di_extract import extract_pdf_content, extract_html_content
 from ..services.embedding_service import EmbeddingService
 from ..ingestion.indexer_job import upsert_chunks
 from ..ingestion.chunk import chunk_content
@@ -161,9 +161,9 @@ class ModularDocumentProcessor:
             file_extension = Path(file_path).suffix.lower()
             
             if file_extension == '.pdf':
-                content_data = await extract_content_from_pdf(file_path)
+                content_data = await extract_pdf_content(file_path)
             elif file_extension in ['.html', '.htm']:
-                content_data = await extract_content_from_html(file_path)
+                content_data = await extract_html_content(file_path)
             else:
                 raise ValueError(f"Unsupported file type: {file_extension}")
             

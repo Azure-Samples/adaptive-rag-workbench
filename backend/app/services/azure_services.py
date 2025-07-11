@@ -181,40 +181,41 @@ class AzureServiceManager:
                 logger.warning("Document Intelligence endpoint not configured")
                 self.form_recognizer_client = None
             
-            # Initialize Azure AI Project service for instrumented OpenAI clients
-            try:
-                from .azure_ai_project_service import azure_ai_project_service
-                await azure_ai_project_service.initialize()
+            # Initialize Azure OpenAI clients directly (not using Azure AI Project service for now)
+            # The Azure AI Project service returns ChatCompletionsClient which doesn't have embeddings
+            if hasattr(settings, 'openai_endpoint') and settings.openai_endpoint:
+                self.openai_client = AzureOpenAI(
+                    azure_endpoint=settings.openai_endpoint,
+                    api_key=settings.openai_key,
+                    api_version=settings.openai_api_version
+                )
                 
-                if azure_ai_project_service.is_instrumented():
-                    self.openai_client = azure_ai_project_service.get_chat_client()
-                    self.async_openai_client = azure_ai_project_service.get_chat_client()
-                    logger.info("Azure AI Project clients initialized with telemetry")
-                else:
-                    raise Exception("Azure AI Project service not properly instrumented")
-                    
-            except Exception as e:
-                logger.warning(f"Failed to initialize Azure AI Project service: {e}")
-                logger.info("Falling back to regular OpenAI clients")
+                self.async_openai_client = AsyncAzureOpenAI(
+                    azure_endpoint=settings.openai_endpoint,
+                    api_key=settings.openai_key,
+                    api_version=settings.openai_api_version
+                )
+                logger.info(f"Azure OpenAI clients initialized with API version {settings.openai_api_version}")
                 
-                # Fallback to regular OpenAI clients with updated API version
-                if hasattr(settings, 'openai_endpoint') and settings.openai_endpoint:
-                    self.openai_client = AzureOpenAI(
-                        azure_endpoint=settings.openai_endpoint,
-                        api_key=settings.openai_key,
-                        api_version=settings.openai_api_version
-                    )
+                # Initialize Azure AI Project service for chat telemetry (optional)
+                try:
+                    from .azure_ai_project_service import azure_ai_project_service
+                    await azure_ai_project_service.initialize()
                     
-                    self.async_openai_client = AsyncAzureOpenAI(
-                        azure_endpoint=settings.openai_endpoint,
-                        api_key=settings.openai_key,
-                        api_version=settings.openai_api_version
-                    )
-                    logger.info(f"Azure OpenAI clients initialized (fallback) with API version {settings.openai_api_version}")
-                else:
-                    logger.warning("Azure OpenAI endpoint not configured")
-                    self.openai_client = None
-                    self.async_openai_client = None
+                    if azure_ai_project_service.is_instrumented():
+                        # Keep the chat client separate for telemetry, but use regular OpenAI for embeddings
+                        self.chat_client = azure_ai_project_service.get_chat_client()
+                        logger.info("Azure AI Project chat client initialized with telemetry")
+                    else:
+                        logger.info("Azure AI Project service not instrumented, using regular OpenAI only")
+                        
+                except Exception as e:
+                    logger.warning(f"Failed to initialize Azure AI Project service: {e}")
+                    logger.info("Using regular OpenAI clients only")
+            else:
+                logger.warning("Azure OpenAI endpoint not configured")
+                self.openai_client = None
+                self.async_openai_client = None
             
             # Initialize CosmosDB client
             if hasattr(settings, 'azure_cosmos_endpoint') and settings.azure_cosmos_endpoint:
@@ -276,7 +277,7 @@ class AzureServiceManager:
         except Exception as e:
             logger.error(f"Error during Azure services cleanup: {e}")
     
-    async def ensure_search_index_exists(self) -> bool:
+    async def _ensure_search_index_exists(self) -> bool:
         """Ensure the search index exists, create it if it doesn't"""
         try:
             if self._use_mock:
@@ -303,6 +304,128 @@ class AzureServiceManager:
             logger.error(f"Failed to ensure search index exists: {e}")
             return False
     
+    async def create_search_index(self):
+        """
+        DEPRECATED: Use ensure_search_index_exists() instead.
+        This method is kept for backward compatibility but will call ensure_search_index_exists().
+        """
+        logger.warning("create_search_index() is deprecated. Use ensure_search_index_exists() instead.")
+        return await self.ensure_search_index_exists()
+
+    async def ensure_search_index_exists(self) -> bool:
+        """Ensure the search index exists, create it if it doesn't"""
+        try:
+            logger.info(f"Checking if search index '{settings.search_index}' exists")
+            
+            # Check if index exists
+            try:
+                index = self.search_index_client.get_index(settings.search_index)
+                logger.info(f"Search index '{settings.search_index}' already exists with {len(index.fields)} fields")
+                return True
+            except Exception as e:
+                logger.info(f"Search index '{settings.search_index}' does not exist, creating it. Error: {e}")
+
+            # Create the index
+            from azure.search.documents.indexes.models import (
+                SearchIndex, SearchField, SearchFieldDataType, SimpleField, 
+                SearchableField, VectorSearch, HnswAlgorithmConfiguration,
+                VectorSearchProfile, SemanticConfiguration, SemanticPrioritizedFields,
+                SemanticField, SemanticSearch
+            )
+            fields = [
+                SimpleField(name="id", type=SearchFieldDataType.String, key=True),
+                SearchableField(name="content", type=SearchFieldDataType.String),
+                SearchableField(name="title", type=SearchFieldDataType.String),
+                SimpleField(name="document_id", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="source", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="chunk_id", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="document_type", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="company", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="filing_date", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="section_type", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="page_number", type=SearchFieldDataType.Int32, filterable=True),
+                SimpleField(name="credibility_score", type=SearchFieldDataType.Double, filterable=True),
+                SimpleField(name="processed_at", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="citation_info", type=SearchFieldDataType.String),                # SEC-specific fields from Edgar tools
+                SimpleField(name="ticker", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="cik", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="industry", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="sic", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="entity_type", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="form_type", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="accession_number", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="period_end_date", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="chunk_index", type=SearchFieldDataType.Int32, filterable=True),
+                SimpleField(name="content_type", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="chunk_method", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="file_size", type=SearchFieldDataType.Int64, filterable=True),
+                SimpleField(name="document_url", type=SearchFieldDataType.String),
+                SearchField(
+                    name="content_vector", 
+                    type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
+                    searchable=True,
+                    vector_search_dimensions=1536,
+                    vector_search_profile_name="default-vector-profile"
+                )
+            ]
+            
+            # Configure vector search
+            vector_search = VectorSearch(
+                algorithms=[
+                    HnswAlgorithmConfiguration(
+                        name="default-hnsw",
+                        parameters={
+                            "m": 4,
+                            "efConstruction": 400,
+                            "efSearch": 500,
+                            "metric": "cosine"
+                        }
+                    )
+                ],
+                profiles=[
+                    VectorSearchProfile(
+                        name="default-vector-profile",
+                        algorithm_configuration_name="default-hnsw"
+                    )
+                ]
+            )
+              # Configure semantic search with SEC-specific fields
+            semantic_config = SemanticConfiguration(
+                name="default-semantic-config",
+                prioritized_fields=SemanticPrioritizedFields(
+                    title_field=SemanticField(field_name="title"),
+                    content_fields=[
+                        SemanticField(field_name="content"),
+                        SemanticField(field_name="section_type")
+                    ],                    keywords_fields=[
+                        SemanticField(field_name="ticker"),
+                        SemanticField(field_name="company"),
+                        SemanticField(field_name="form_type"),
+                        SemanticField(field_name="document_type"),
+                        SemanticField(field_name="industry"),
+                        SemanticField(field_name="entity_type")
+                    ]
+                )
+            )
+            
+            semantic_search = SemanticSearch(
+                configurations=[semantic_config],
+                default_configuration_name="default-semantic-config"
+            )
+              # Create the index
+            index = SearchIndex(
+                name=settings.search_index,
+                fields=fields,
+                vector_search=vector_search,
+                semantic_search=semantic_search
+            )
+            result = self.search_index_client.create_index(index)
+            logger.info(f"Successfully created search index '{settings.AZURE_SEARCH_INDEX_NAME}'")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to ensure search index exists: {e}")
+            return False
+        
     async def _create_enhanced_search_index(self):
         """Create enhanced search index with comprehensive schema"""
         from azure.search.documents.indexes.models import (
@@ -326,6 +449,22 @@ class AzureServiceManager:
             SearchableField(name="document_type", type=SearchFieldDataType.String, filterable=True, facetable=True),
             SimpleField(name="filing_date", type=SearchFieldDataType.String, filterable=True, sortable=True),
             
+            SimpleField(name="document_id", type=SearchFieldDataType.String, filterable=True),
+            SimpleField(name="section_type", type=SearchFieldDataType.String, filterable=True),
+            SimpleField(name="page_number", type=SearchFieldDataType.Int32, filterable=True),
+            SimpleField(name="citation_info", type=SearchFieldDataType.String),                # SEC-specific fields from Edgar tools
+            SimpleField(name="ticker", type=SearchFieldDataType.String, filterable=True),
+            SimpleField(name="cik", type=SearchFieldDataType.String, filterable=True),
+            SimpleField(name="industry", type=SearchFieldDataType.String, filterable=True),
+            SimpleField(name="sic", type=SearchFieldDataType.String, filterable=True),
+            SimpleField(name="entity_type", type=SearchFieldDataType.String, filterable=True),
+            SimpleField(name="form_type", type=SearchFieldDataType.String, filterable=True),
+            SimpleField(name="accession_number", type=SearchFieldDataType.String, filterable=True),
+            SimpleField(name="period_end_date", type=SearchFieldDataType.String, filterable=True),
+            SimpleField(name="chunk_method", type=SearchFieldDataType.String, filterable=True),
+            SimpleField(name="document_url", type=SearchFieldDataType.String),
+
+
             # Content analysis fields
             SimpleField(name="chunk_index", type=SearchFieldDataType.Int32, filterable=True, sortable=True),
             SimpleField(name="content_length", type=SearchFieldDataType.Int32, filterable=True, sortable=True),
@@ -460,6 +599,42 @@ class AzureServiceManager:
             logger.error(f"Failed to recreate search index: {e}")
             return False
     
+    async def check_document_exists(self, accession_number: str) -> bool:
+        """Check if a document with the given accession number already exists in the search index"""
+        try:
+            logger.info(f"Checking if document exists in index: {accession_number}")
+            
+            indexExists = await self.ensure_search_index_exists()
+            if not indexExists:
+                logger.error("Search index does not exist, creating it now")
+                
+            # Search for documents with the specific accession number using async client
+            search_results = await self.async_search_client.search(
+                search_text="*",
+                filter=f"accession_number eq '{accession_number}'",
+                select=["id", "accession_number"],
+                top=1
+            )
+            
+            # Convert async results to list to check if any documents exist
+            documents = []
+            async for result in search_results:
+                documents.append(result)
+                
+            exists = len(documents) > 0
+            
+            if exists:
+                logger.info(f"Document with accession number {accession_number} already exists in index")
+            else:
+                logger.info(f"Document with accession number {accession_number} not found in index")
+                
+            return exists
+            
+        except Exception as e:
+            logger.error(f"Error checking if document exists: {e}")
+            # In case of error, assume document doesn't exist to allow processing
+            return False
+
     async def get_embedding(self, text: str, model: str = None) -> List[float]:
         """Get embedding for text using Azure OpenAI async client"""
         try:
@@ -471,7 +646,7 @@ class AzureServiceManager:
                 raise ValueError("Azure OpenAI client not initialized")
             
             # Use deployment name from settings
-            deployment_name = model or getattr(settings, 'embedding_deployment_name', 'text-embedding-3-small')
+            deployment_name = model or getattr(settings, 'OPENAI_EMBED_DEPLOYMENT', 'embeddingsmall')
             
             logger.debug(f"Getting embedding for {len(text)} chars using {deployment_name}")
             
@@ -878,6 +1053,11 @@ This mock document represents a typical 10-K annual report structure with financ
             logger.error(f"Failed to retrieve session history: {e}")
             return []
 
+    @property
+    def embedding_client(self):
+        """Property to access the embedding client (for status checks)"""
+        return self.async_openai_client
+        
 # Global service manager instance
 azure_service_manager = AzureServiceManager()
 
@@ -889,4 +1069,4 @@ async def get_azure_service_manager() -> AzureServiceManager:
 
 async def cleanup_azure_services():
     """Cleanup Azure services"""
-    await azure_service_manager.cleanup()  
+    await azure_service_manager.cleanup()

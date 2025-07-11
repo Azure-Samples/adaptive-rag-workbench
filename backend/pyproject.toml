@@ -33,6 +33,7 @@ azure-monitor-opentelemetry = "^1.6.0"
 numpy = "^1.24.0"
 azure-ai-projects = "^1.0.0b12"
 azure-ai-agents = "^1.1.0b2"
+edgartools = "^1.0.0"
 
 
 [build-system]

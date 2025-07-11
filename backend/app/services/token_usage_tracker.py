@@ -29,6 +29,7 @@ class ServiceType(str, Enum):
     FAST_RAG = "fast_rag"
     AGENTIC_RAG = "agentic_rag"
     DEEP_RESEARCH_RAG = "deep_research_rag"
+    SEC_DOCS = "sec_docs"
 
 class OperationType(str, Enum):
     """Operation types for detailed tracking"""
