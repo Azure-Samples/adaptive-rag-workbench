@@ -98,3 +98,5 @@ yarn-error.log*
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+*.xml

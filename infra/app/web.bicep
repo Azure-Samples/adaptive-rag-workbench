@@ -4,6 +4,8 @@ param tags object = {}
 
 param containerAppsEnvironmentName string
 param apiBaseUrl string
+param image string
+param registryServer string
 
 resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01' existing = {
   name: containerAppsEnvironmentName
@@ -16,6 +18,11 @@ resource web 'Microsoft.App/containerApps@2023-05-01' = {
   properties: {
     managedEnvironmentId: containerAppsEnvironment.id
     configuration: {
+      registries: [
+        {
+          server: registryServer
+        }
+      ]
       ingress: {
         external: true
         targetPort: 80
@@ -30,7 +37,7 @@ resource web 'Microsoft.App/containerApps@2023-05-01' = {
     template: {
       containers: [
         {
-          image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+          image: image
           name: 'web'
           env: [
             {

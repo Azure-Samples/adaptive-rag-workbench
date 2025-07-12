@@ -5,13 +5,14 @@ param tags object = {}
 param containerAppsEnvironmentName string
 param keyVaultName string
 param openAiEndpoint string
-param openAiDeploymentName string
 param searchEndpoint string
 param searchIndexName string
 param documentIntelligenceEndpoint string
 param storageAccountName string
 param applicationInsightsConnectionString string
 param identityName string
+param image string
+param registryServer string
 
 resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01' existing = {
   name: containerAppsEnvironmentName
@@ -42,6 +43,12 @@ resource api 'Microsoft.App/containerApps@2023-05-01' = {
   properties: {
     managedEnvironmentId: containerAppsEnvironment.id
     configuration: {
+      registries: [
+        {
+          server: registryServer
+          identity: identity.id
+        }
+      ]
       ingress: {
         external: true
         targetPort: 8000
@@ -78,7 +85,7 @@ resource api 'Microsoft.App/containerApps@2023-05-01' = {
     template: {
       containers: [
         {
-          image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+          image: image
           name: 'api'
           env: [
             {
@@ -95,11 +102,11 @@ resource api 'Microsoft.App/containerApps@2023-05-01' = {
             }
             {
               name: 'AZURE_OPENAI_CHAT_DEPLOYMENT'
-              value: openAiDeploymentName
+              value: 'chat'
             }
             {
               name: 'AZURE_OPENAI_EMBEDDING_DEPLOYMENT'
-              value: 'text-embedding-3-small'
+              value: 'embedding'
             }
             {
               name: 'AZURE_SEARCH_ENDPOINT'

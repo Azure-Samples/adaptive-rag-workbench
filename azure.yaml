@@ -9,18 +9,25 @@ services:
     host: containerapp
     docker:
       path: ./Dockerfile
-      context: ./backend
+      context: .
   web:
     project: ./frontend
     language: js
     host: containerapp
     docker:
       path: ./Dockerfile
-      context: ./frontend
+      context: .
 infra:
   provider: bicep
   path: infra
   module: main
+  parameters:
+    environmentName: ${{ env.AZURE_ENV_NAME }}
+    location: ${{ env.AZURE_LOCATION }}
+    principalId: ${{ env.AZURE_PRINCIPAL_ID }}
+    apiImage: ${{ services.api.image }}
+    webImage: ${{ services.web.image }}
+    containerRegistryLoginServer: ${{ services.api.image.split('/')[0] }}
 pipeline:
   provider: github
 hooks:
