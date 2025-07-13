@@ -4,18 +4,38 @@ param tags object = {}
 
 param containerAppsEnvironmentName string
 param apiBaseUrl string
+param apiServiceName string
+param image string
+param registryServer string
+param identityName string
 
 resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01' existing = {
   name: containerAppsEnvironmentName
+}
+
+resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
+  name: identityName
 }
 
 resource web 'Microsoft.App/containerApps@2023-05-01' = {
   name: name
   location: location
   tags: union(tags, { 'azd-service-name': 'web' })
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${identity.id}': {}
+    }
+  }
   properties: {
     managedEnvironmentId: containerAppsEnvironment.id
     configuration: {
+      registries: !empty(registryServer) ? [
+        {
+          server: registryServer
+          identity: identity.id
+        }
+      ] : []
       ingress: {
         external: true
         targetPort: 80
@@ -30,12 +50,16 @@ resource web 'Microsoft.App/containerApps@2023-05-01' = {
     template: {
       containers: [
         {
-          image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+          image: image
           name: 'web'
           env: [
             {
               name: 'VITE_API_BASE_URL'
               value: apiBaseUrl
+            }
+            {
+              name: 'API_SERVICE_NAME'
+              value: apiServiceName
             }
           ]
           resources: {

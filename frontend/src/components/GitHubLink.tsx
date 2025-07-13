@@ -12,7 +12,7 @@ export function GitHubLink() {
   useEffect(() => {
     const fetchStarCount = async () => {
       try {
-        const response = await fetch('https://api.github.com/repos/thegovind/adaptive-rag-workbench');
+        const response = await fetch('https://api.github.com/repos/Azure-Samples/adaptive-rag-workbench');
         const data = await response.json();
         setStarCount(data.stargazers_count);
       } catch (error) {
@@ -37,7 +37,7 @@ export function GitHubLink() {
           ? 'bg-primary/10 hover:bg-primary/15 border-primary/20 text-primary hover:border-primary/30'
           : 'bg-white hover:bg-gray-50 border-gray-200 text-gray-700 hover:border-gray-300'
       }`}
-      onClick={() => window.open('https://github.com/thegovind/adaptive-rag-workbench', '_blank')}
+      onClick={() => window.open('https://github.com/Azure-Samples/adaptive-rag-workbench', '_blank')}
     >
       <Star className="h-4 w-4" />
       <span className="text-sm font-medium">Star</span>

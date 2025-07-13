@@ -1,17 +1,30 @@
 targetScope = 'subscription'
 
+
+@description('Full image reference for the API container.')
+param apiImage string = ''
+
+@description('Full image reference for the Web container.')
+param webImage string = ''
+
+@description('Login server name of the ACR that holds both images.')
+param containerRegistryLoginServer string = ''
+
+@description('Name of the container registry')
+param containerRegistryName string = ''
+
 @minLength(1)
 @maxLength(64)
 @description('Name of the the environment which is used to generate a short unique hash used in all resources.')
-param environmentName string
+param environmentName string = 'arag'
 
 @minLength(1)
 @description('Primary location for all resources')
-param location string
+param location string = 'eastus2'
 
 @description('Primary location for all resources')
 @allowed(['eastus', 'eastus2', 'westus', 'westus2', 'westus3'])
-param openAiLocation string = 'eastus'
+param openAiLocation string = 'eastus2'
 
 @description('Location for the OpenAI resource group')
 @allowed(['eastus', 'eastus2', 'westus', 'westus2', 'westus3'])
@@ -46,6 +59,8 @@ param applicationInsightsName string = ''
 
 @description('Id of the user or app to assign application roles')
 param principalId string = ''
+
+
 
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
@@ -91,24 +106,30 @@ module containerAppsEnvironment './app/container-apps-env.bicep' = {
   }
 }
 
-// The application backend
+// The application backend (depends on secrets being created first)
 module api './app/api.bicep' = {
   name: 'api'
   scope: resourceGroup
+  dependsOn: [
+    kvSecrets
+    apiKeyVaultAccess
+    apiAcrAccess
+  ]
   params: {
     name: !empty(apiServiceName) ? apiServiceName : '${abbrs.appContainerApps}api-${resourceToken}'
     location: location
     tags: tags
     containerAppsEnvironmentName: containerAppsEnvironment.outputs.name
     keyVaultName: keyVault.outputs.name
-    openAiEndpoint: openAi.outputs.endpoint
-    openAiDeploymentName: openAi.outputs.deploymentName
+    openAiEndpoint: openAiResourceGroupLocation == location ? openAi.outputs.endpoint : openAiSeparate.outputs.endpoint
     searchEndpoint: searchService.outputs.endpoint
     searchIndexName: 'adaptive-rag-index'
     documentIntelligenceEndpoint: documentIntelligence.outputs.endpoint
     storageAccountName: storage.outputs.name
     applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
     identityName: apiIdentity.outputs.identityName
+    image: !empty(apiImage) ? apiImage : 'nginx:latest'
+    registryServer: containerRegistry.outputs.loginServer
   }
 }
 
@@ -116,19 +137,26 @@ module api './app/api.bicep' = {
 module web './app/web.bicep' = {
   name: 'web'
   scope: resourceGroup
+  dependsOn: [
+    apiAcrAccess
+  ]
   params: {
     name: !empty(webServiceName) ? webServiceName : '${abbrs.appContainerApps}web-${resourceToken}'
     location: location
     tags: tags
     containerAppsEnvironmentName: containerAppsEnvironment.outputs.name
     apiBaseUrl: api.outputs.SERVICE_API_URI
+    apiServiceName: api.outputs.SERVICE_API_NAME
+    image: !empty(webImage) ? webImage : 'nginx:latest'
+    registryServer: containerRegistry.outputs.loginServer
+    identityName: apiIdentity.outputs.identityName
   }
 }
 
-// Create an Azure OpenAI instance
-module openAi './app/ai/cognitive-services.bicep' = {
+// Create an Azure OpenAI instance (same location as main resources)
+module openAi './app/ai/cognitive-services.bicep' = if (openAiResourceGroupLocation == location) {
   name: 'openai'
-  scope: openAiResourceGroupLocation != location ? openAiResourceGroup : resourceGroup
+  scope: resourceGroup
   params: {
     name: !empty(openAiServiceName) ? openAiServiceName : '${abbrs.cognitiveServicesAccounts}${resourceToken}'
     location: openAiLocation
@@ -138,11 +166,11 @@ module openAi './app/ai/cognitive-services.bicep' = {
     }
     deployments: [
       {
-        name: 'gpt-4'
+        name: 'chat'
         model: {
           format: 'OpenAI'
-          name: 'gpt-4'
-          version: '0613'
+          name: 'gpt-4o-mini'
+          version: '2024-07-18'
         }
         sku: {
           name: 'Standard'
@@ -150,10 +178,50 @@ module openAi './app/ai/cognitive-services.bicep' = {
         }
       }
       {
-        name: 'text-embedding-3-small'
+        name: 'embedding'
         model: {
           format: 'OpenAI'
-          name: 'text-embedding-3-small'
+          name: 'text-embedding-3-large'
+          version: '1'
+        }
+        sku: {
+          name: 'Standard'
+          capacity: 120
+        }
+      }
+    ]
+  }
+}
+
+// Create an Azure OpenAI instance (different location from main resources)
+module openAiSeparate './app/ai/cognitive-services.bicep' = if (openAiResourceGroupLocation != location) {
+  name: 'openai-separate'
+  scope: openAiResourceGroup
+  params: {
+    name: !empty(openAiServiceName) ? openAiServiceName : '${abbrs.cognitiveServicesAccounts}${resourceToken}'
+    location: openAiLocation
+    tags: tags
+    sku: {
+      name: 'S0'
+    }
+    deployments: [
+      {
+        name: 'chat'
+        model: {
+          format: 'OpenAI'
+          name: 'gpt-4o-mini'
+          version: '2024-07-18'
+        }
+        sku: {
+          name: 'Standard'
+          capacity: 10
+        }
+      }
+      {
+        name: 'embedding'
+        model: {
+          format: 'OpenAI'
+          name: 'text-embedding-3-large'
           version: '1'
         }
         sku: {
@@ -223,7 +291,6 @@ module keyVault './app/keyvault.bicep' = {
     name: !empty(keyVaultName) ? keyVaultName : '${abbrs.keyVaultVaults}${resourceToken}'
     location: location
     tags: tags
-    principalId: principalId
   }
 }
 
@@ -236,6 +303,17 @@ module monitoring './app/monitoring.bicep' = {
     tags: tags
     logAnalyticsName: !empty(logAnalyticsName) ? logAnalyticsName : '${abbrs.operationalInsightsWorkspaces}${resourceToken}'
     applicationInsightsName: !empty(applicationInsightsName) ? applicationInsightsName : '${abbrs.insightsComponents}${resourceToken}'
+  }
+}
+
+// Create Azure Container Registry
+module containerRegistry './app/container-registry.bicep' = {
+  name: 'container-registry'
+  scope: resourceGroup
+  params: {
+    name: !empty(containerRegistryName) ? containerRegistryName : '${abbrs.containerRegistryRegistries}${resourceToken}'
+    location: location
+    tags: tags
   }
 }
 
@@ -260,12 +338,32 @@ module apiKeyVaultAccess './app/rbac/keyvault-access.bicep' = {
   }
 }
 
-// Give the API access to the OpenAI service
-module apiOpenAiAccess './app/rbac/openai-access.bicep' = {
+// Give the API access to the Container Registry
+module apiAcrAccess './app/rbac/acr-access.bicep' = {
+  name: 'api-acr-access'
+  scope: resourceGroup
+  params: {
+    registryName: containerRegistry.outputs.name
+    principalId: apiIdentity.outputs.identityPrincipalId
+  }
+}
+
+// Give the API access to the OpenAI service (same location)
+module apiOpenAiAccess './app/rbac/openai-access.bicep' = if (openAiResourceGroupLocation == location) {
   name: 'api-openai-access'
-  scope: openAiResourceGroupLocation != location ? openAiResourceGroup : resourceGroup
+  scope: resourceGroup
   params: {
     openAiName: openAi.outputs.name
+    principalId: apiIdentity.outputs.identityPrincipalId
+  }
+}
+
+// Give the API access to the OpenAI service (different location)
+module apiOpenAiAccessSeparate './app/rbac/openai-access.bicep' = if (openAiResourceGroupLocation != location) {
+  name: 'api-openai-access-separate'
+  scope: openAiResourceGroup
+  params: {
+    openAiName: openAiSeparate.outputs.name
     principalId: apiIdentity.outputs.identityPrincipalId
   }
 }
@@ -300,6 +398,19 @@ module apiStorageAccess './app/rbac/storage-access.bicep' = {
   }
 }
 
+// Key Vault secrets for service keys
+module kvSecrets 'app/keyvault-secrets.bicep' = {
+  name: 'keyvault-secrets'
+  scope: resourceGroup
+  params: {
+    keyVaultName: keyVault.outputs.name
+    openAiKey: openAiResourceGroupLocation == location ? openAi.outputs.key : openAiSeparate.outputs.key
+    searchKey: searchService.outputs.key
+    documentIntelligenceKey: documentIntelligence.outputs.key
+    storageKey: storage.outputs.key
+  }
+}
+
 // Data outputs
 output AZURE_LOCATION string = location
 output AZURE_TENANT_ID string = tenant().tenantId
@@ -311,10 +422,10 @@ output AZURE_KEY_VAULT_ENDPOINT string = keyVault.outputs.endpoint
 output AZURE_KEY_VAULT_NAME string = keyVault.outputs.name
 
 // OpenAI outputs
-output AZURE_OPENAI_ENDPOINT string = openAi.outputs.endpoint
-output AZURE_OPENAI_KEY string = openAi.outputs.key
-output AZURE_OPENAI_CHAT_DEPLOYMENT string = openAi.outputs.deploymentName
-output AZURE_OPENAI_EMBEDDING_DEPLOYMENT string = 'text-embedding-3-small'
+output AZURE_OPENAI_ENDPOINT string = openAiResourceGroupLocation == location ? openAi.outputs.endpoint : openAiSeparate.outputs.endpoint
+output AZURE_OPENAI_KEY string = openAiResourceGroupLocation == location ? openAi.outputs.key : openAiSeparate.outputs.key
+output AZURE_OPENAI_CHAT_DEPLOYMENT string = 'chat'
+output AZURE_OPENAI_EMBEDDING_DEPLOYMENT string = 'embedding'
 
 // Search outputs
 output AZURE_SEARCH_ENDPOINT string = searchService.outputs.endpoint
@@ -329,6 +440,10 @@ output AZURE_DOCUMENT_INTELLIGENCE_KEY string = documentIntelligence.outputs.key
 output AZURE_STORAGE_ACCOUNT string = storage.outputs.name
 output AZURE_STORAGE_KEY string = storage.outputs.key
 output AZURE_STORAGE_CONNECTION_STRING string = storage.outputs.connectionString
+
+// Container Registry outputs
+output AZURE_CONTAINER_REGISTRY_NAME string = containerRegistry.outputs.name
+output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerRegistry.outputs.loginServer
 
 // Service outputs
 output SERVICE_API_IDENTITY_PRINCIPAL_ID string = apiIdentity.outputs.identityPrincipalId
