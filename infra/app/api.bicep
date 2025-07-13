@@ -43,12 +43,12 @@ resource api 'Microsoft.App/containerApps@2023-05-01' = {
   properties: {
     managedEnvironmentId: containerAppsEnvironment.id
     configuration: {
-      registries: [
+      registries: !empty(registryServer) ? [
         {
           server: registryServer
           identity: identity.id
         }
-      ]
+      ] : []
       ingress: {
         external: true
         targetPort: 8000

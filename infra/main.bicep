@@ -10,6 +10,9 @@ param webImage string = ''
 @description('Login server name of the ACR that holds both images.')
 param containerRegistryLoginServer string = ''
 
+@description('Name of the container registry')
+param containerRegistryName string = ''
+
 @minLength(1)
 @maxLength(64)
 @description('Name of the the environment which is used to generate a short unique hash used in all resources.')
@@ -103,10 +106,15 @@ module containerAppsEnvironment './app/container-apps-env.bicep' = {
   }
 }
 
-// The application backend
-module api './app/api.bicep' = if (!empty(apiImage)) {
+// The application backend (depends on secrets being created first)
+module api './app/api.bicep' = {
   name: 'api'
   scope: resourceGroup
+  dependsOn: [
+    kvSecrets
+    apiKeyVaultAccess
+    apiAcrAccess
+  ]
   params: {
     name: !empty(apiServiceName) ? apiServiceName : '${abbrs.appContainerApps}api-${resourceToken}'
     location: location
@@ -120,23 +128,28 @@ module api './app/api.bicep' = if (!empty(apiImage)) {
     storageAccountName: storage.outputs.name
     applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
     identityName: apiIdentity.outputs.identityName
-    image: apiImage
-    registryServer: containerRegistryLoginServer
+    image: !empty(apiImage) ? apiImage : 'nginx:latest'
+    registryServer: containerRegistry.outputs.loginServer
   }
 }
 
 // The application frontend
-module web './app/web.bicep' = if (!empty(webImage)) {
+module web './app/web.bicep' = {
   name: 'web'
   scope: resourceGroup
+  dependsOn: [
+    apiAcrAccess
+  ]
   params: {
     name: !empty(webServiceName) ? webServiceName : '${abbrs.appContainerApps}web-${resourceToken}'
     location: location
     tags: tags
     containerAppsEnvironmentName: containerAppsEnvironment.outputs.name
-    apiBaseUrl: !empty(apiImage) ? api.outputs.SERVICE_API_URI : ''
-    image: webImage
-    registryServer: containerRegistryLoginServer
+    apiBaseUrl: api.outputs.SERVICE_API_URI
+    apiServiceName: api.outputs.SERVICE_API_NAME
+    image: !empty(webImage) ? webImage : 'nginx:latest'
+    registryServer: containerRegistry.outputs.loginServer
+    identityName: apiIdentity.outputs.identityName
   }
 }
 
@@ -278,7 +291,6 @@ module keyVault './app/keyvault.bicep' = {
     name: !empty(keyVaultName) ? keyVaultName : '${abbrs.keyVaultVaults}${resourceToken}'
     location: location
     tags: tags
-    principalId: principalId
   }
 }
 
@@ -291,6 +303,17 @@ module monitoring './app/monitoring.bicep' = {
     tags: tags
     logAnalyticsName: !empty(logAnalyticsName) ? logAnalyticsName : '${abbrs.operationalInsightsWorkspaces}${resourceToken}'
     applicationInsightsName: !empty(applicationInsightsName) ? applicationInsightsName : '${abbrs.insightsComponents}${resourceToken}'
+  }
+}
+
+// Create Azure Container Registry
+module containerRegistry './app/container-registry.bicep' = {
+  name: 'container-registry'
+  scope: resourceGroup
+  params: {
+    name: !empty(containerRegistryName) ? containerRegistryName : '${abbrs.containerRegistryRegistries}${resourceToken}'
+    location: location
+    tags: tags
   }
 }
 
@@ -311,6 +334,16 @@ module apiKeyVaultAccess './app/rbac/keyvault-access.bicep' = {
   scope: resourceGroup
   params: {
     keyVaultName: keyVault.outputs.name
+    principalId: apiIdentity.outputs.identityPrincipalId
+  }
+}
+
+// Give the API access to the Container Registry
+module apiAcrAccess './app/rbac/acr-access.bicep' = {
+  name: 'api-acr-access'
+  scope: resourceGroup
+  params: {
+    registryName: containerRegistry.outputs.name
     principalId: apiIdentity.outputs.identityPrincipalId
   }
 }
@@ -408,9 +441,13 @@ output AZURE_STORAGE_ACCOUNT string = storage.outputs.name
 output AZURE_STORAGE_KEY string = storage.outputs.key
 output AZURE_STORAGE_CONNECTION_STRING string = storage.outputs.connectionString
 
+// Container Registry outputs
+output AZURE_CONTAINER_REGISTRY_NAME string = containerRegistry.outputs.name
+output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerRegistry.outputs.loginServer
+
 // Service outputs
 output SERVICE_API_IDENTITY_PRINCIPAL_ID string = apiIdentity.outputs.identityPrincipalId
-output SERVICE_API_NAME string = !empty(apiImage) ? api.outputs.SERVICE_API_NAME : ''
-output SERVICE_API_URI string = !empty(apiImage) ? api.outputs.SERVICE_API_URI : ''
-output SERVICE_WEB_NAME string = !empty(webImage) ? web.outputs.SERVICE_WEB_NAME : ''
-output SERVICE_WEB_URI string = !empty(webImage) ? web.outputs.SERVICE_WEB_URI : ''
+output SERVICE_API_NAME string = api.outputs.SERVICE_API_NAME
+output SERVICE_API_URI string = api.outputs.SERVICE_API_URI
+output SERVICE_WEB_NAME string = web.outputs.SERVICE_WEB_NAME
+output SERVICE_WEB_URI string = web.outputs.SERVICE_WEB_URI

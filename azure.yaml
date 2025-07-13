@@ -2,11 +2,18 @@
 name: adaptive-rag-workbench
 metadata:
   template: adaptive-rag-workbench@0.0.1-beta
+
+registries:
+  acr:
+    source: external
+    endpoint: ${{ env.AZURE_CONTAINER_REGISTRY_ENDPOINT }}
+
 services:
   api:
     project: ./backend
     language: python
     host: containerapp
+    registry: acr
     docker:
       path: ./Dockerfile
       context: .
@@ -14,9 +21,11 @@ services:
     project: ./frontend
     language: js
     host: containerapp
+    registry: acr
     docker:
       path: ./Dockerfile
       context: .
+
 infra:
   provider: bicep
   path: infra
@@ -27,9 +36,11 @@ infra:
     principalId: ${{ env.AZURE_PRINCIPAL_ID }}
     apiImage: ${{ services.api.image }}
     webImage: ${{ services.web.image }}
-    containerRegistryLoginServer: ${{ services.api.image.split('/')[0] }}
+    containerRegistryName: acr${{ env.AZURE_ENV_NAME }}
+
 pipeline:
   provider: github
+
 hooks:
   preprovision:
     shell: sh

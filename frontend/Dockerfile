@@ -5,8 +5,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install ALL dependencies (including dev dependencies needed for build)
+RUN npm ci
 
 # Copy source code
 COPY . .
@@ -20,11 +20,11 @@ FROM nginx:alpine
 # Copy built assets from build stage
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/nginx.conf
+# Copy nginx configuration template
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 
 # Expose port 80
 EXPOSE 80
 
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Debug environment variables and start nginx
+CMD ["sh", "-c", "echo 'Environment variables:' && env | grep -E '(API_|VITE_)' && echo 'Starting nginx...' && nginx -g 'daemon off;'"]
