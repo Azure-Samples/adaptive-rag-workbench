@@ -16,7 +16,7 @@ class EnhancedDocumentProcessor:
     """
     
     def __init__(self):
-        self.chunk_size = 1000
+        self.chunk_size = 4000  # Increased to ~4000 chars (~1000 tokens) for better context
         self.chunk_overlap = 200
 
     async def process_document(self, file_path: str, filename: str, status_callback: Optional[Callable] = None) -> Dict[str, Any]:
@@ -83,8 +83,20 @@ class EnhancedDocumentProcessor:
             
             # Check extraction results
             content = doc_result.get("content", "")
-            if not content or "Error" in content:
+            logger.info(f"[{filename}] Content check: length={len(content)}, type={type(content)}")
+            logger.info(f"[{filename}] Content preview: {repr(content[:200])}")
+            logger.info(f"[{filename}] doc_result keys: {list(doc_result.keys())}")
+            
+            # Check for actual extraction errors, not just the word "Error" in content
+            if not content or len(content.strip()) == 0:
                 error_msg = f"No valid content extracted from document"
+                logger.error(f"[{filename}] {error_msg}")
+                update_status("EXTRACTION", error_msg, 0)
+                raise Exception(error_msg)
+            
+            # Check if content indicates an extraction error (more specific check)
+            if content.strip().startswith("Error:") or "extraction failed" in content.lower():
+                error_msg = f"Content extraction failed: {content[:200]}"
                 logger.error(f"[{filename}] {error_msg}")
                 update_status("EXTRACTION", error_msg, 0)
                 raise Exception(error_msg)
@@ -187,6 +199,17 @@ class EnhancedDocumentProcessor:
             
             # Index chunks in Azure Search with enhanced error handling
             if chunks:
+                update_status("INDEXING", f"Setting up Azure Search index", 83)
+                await asyncio.sleep(0.1)
+                
+                # Ensure the search index exists with the correct schema
+                try:
+                    from .search_index_setup import setup_vector_search_index
+                    await setup_vector_search_index()
+                    logger.info(f"[{filename}] Search index setup completed")
+                except Exception as index_setup_error:
+                    logger.warning(f"[{filename}] Index setup failed: {str(index_setup_error)}")
+                
                 update_status("INDEXING", f"Indexing {len(chunks)} chunks in Azure Search", 85)
                 await asyncio.sleep(0.1)
                 
@@ -203,7 +226,10 @@ class EnhancedDocumentProcessor:
                             "word_count": len(chunk.get('content', '').split()),
                             "credibility_score": credibility_score,
                             "has_structured_content": bool(doc_result.get('structure_info', {})),
-                            "structure_info": str(doc_result.get('structure_info', {}))
+                            "structure_info": str(doc_result.get('structure_info', {})),
+                            "chunk_id": chunk.get('id', ''),
+                            "embedding_model": chunk.get('embedding_model', ''),
+                            "embedding_dimensions": chunk.get('embedding_dimensions', 0)
                         })
                         enhanced_chunks.append(enhanced_chunk)
                     
@@ -260,9 +286,9 @@ class EnhancedDocumentProcessor:
             update_status("ERROR", f"Processing failed: {error_msg}", 0)
             raise Exception(f"Document processing failed: {error_msg}")
 
-    def _create_chunks(self, doc_result: Dict[str, Any], filename: str, company: str, year: int) -> List[Dict[str, Any]]:
+    def _create_chunks(self, doc_result: Dict[str, Any], filename: str, company: str, year: str) -> List[Dict[str, Any]]:
         """
-        Create semantic chunks from document content
+        Create semantic chunks from document content with proper size limits
         """
         content = doc_result.get("content", "")
         if not content:
@@ -270,29 +296,36 @@ class EnhancedDocumentProcessor:
         
         chunks = []
         
-        # Split content into paragraphs first
-        paragraphs = content.split('\n\n')
+        # Split content into sentences first for better semantic boundaries
+        sentences = content.replace('\n', ' ').split('. ')
         current_chunk = ""
         chunk_index = 0
         
-        for paragraph in paragraphs:
-            paragraph = paragraph.strip()
-            if not paragraph:
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if not sentence:
                 continue
                 
-            # If adding this paragraph would exceed chunk size, finalize current chunk
-            if len(current_chunk) + len(paragraph) > self.chunk_size and current_chunk:
+            # Add period back if it was removed (except for last sentence)
+            if not sentence.endswith('.') and not sentence.endswith('?') and not sentence.endswith('!'):
+                sentence += '.'
+            
+            # Check if adding this sentence would exceed chunk size
+            potential_chunk = current_chunk + (" " + sentence if current_chunk else sentence)
+            
+            if len(potential_chunk) > self.chunk_size and current_chunk:
+                # Finalize current chunk
                 chunk = self._create_chunk_dict(
                     current_chunk, filename, company, year, chunk_index
                 )
                 chunks.append(chunk)
                 chunk_index += 1
                 
-                # Start new chunk with overlap
-                overlap_words = current_chunk.split()[-self.chunk_overlap//10:]  # Rough word overlap
-                current_chunk = " ".join(overlap_words) + " " + paragraph
+                # Start new chunk with overlap - take last few words from previous chunk
+                overlap_words = current_chunk.split()[-50:]  # Take last 50 words for overlap
+                current_chunk = " ".join(overlap_words) + " " + sentence
             else:
-                current_chunk += (" " + paragraph if current_chunk else paragraph)
+                current_chunk = potential_chunk
         
         # Add final chunk if there's remaining content
         if current_chunk.strip():
@@ -301,9 +334,30 @@ class EnhancedDocumentProcessor:
             )
             chunks.append(chunk)
         
-        return chunks
+        # If we still have chunks that are too large, split them further
+        final_chunks = []
+        for chunk in chunks:
+            if len(chunk['content']) > self.chunk_size:
+                # Split large chunks by word count
+                words = chunk['content'].split()
+                word_chunk_size = self.chunk_size // 6  # Approximate words per chunk (avg 6 chars per word)
+                
+                for i in range(0, len(words), word_chunk_size):
+                    chunk_words = words[i:i + word_chunk_size]
+                    if chunk_words:
+                        sub_chunk = self._create_chunk_dict(
+                            " ".join(chunk_words), filename, company, year, 
+                            len(final_chunks)
+                        )
+                        final_chunks.append(sub_chunk)
+            else:
+                # Update chunk index for final list
+                chunk['chunk_index'] = len(final_chunks)
+                final_chunks.append(chunk)
+        
+        return final_chunks
 
-    def _create_chunk_dict(self, content: str, filename: str, company: str, year: int, index: int) -> Dict[str, Any]:
+    def _create_chunk_dict(self, content: str, filename: str, company: str, year: str, index: int) -> Dict[str, Any]:
         """
         Create a standardized chunk dictionary
         """
@@ -470,7 +524,7 @@ class EnhancedDocumentProcessor:
 
     def _create_structure_aware_chunks(self, doc_result: Dict[str, Any], filename: str, company: str, year: str) -> List[Dict[str, Any]]:
         """
-        Create chunks that respect document structure (paragraphs, sections)
+        Create chunks that respect document structure (paragraphs, sections) with proper size limits
         """
         paragraphs = doc_result.get("paragraphs", [])
         chunks = []
@@ -486,9 +540,9 @@ class EnhancedDocumentProcessor:
                 continue
             
             # Check if this paragraph would make the chunk too large
-            if (len(current_chunk_content) + len(para_content) > self.chunk_size and 
-                current_chunk_content):
-                
+            potential_content = current_chunk_content + (" " + para_content if current_chunk_content else para_content)
+            
+            if len(potential_content) > self.chunk_size and current_chunk_content:
                 # Finalize current chunk
                 chunk = self._create_enhanced_chunk_dict(
                     current_chunk_content, filename, company, year, chunk_index,
@@ -507,16 +561,16 @@ class EnhancedDocumentProcessor:
                     current_chunk_paragraphs = [paragraph]
                 else:
                     # Include overlap from previous chunk
-                    overlap_paras = current_chunk_paragraphs[-2:] if len(current_chunk_paragraphs) >= 2 else current_chunk_paragraphs
+                    overlap_paras = current_chunk_paragraphs[-1:] if current_chunk_paragraphs else []
                     overlap_content = " ".join(p.get("content", "") for p in overlap_paras)
-                    current_chunk_content = overlap_content + " " + para_content
+                    if overlap_content:
+                        current_chunk_content = overlap_content + " " + para_content
+                    else:
+                        current_chunk_content = para_content
                     current_chunk_paragraphs = overlap_paras + [paragraph]
             else:
                 # Add to current chunk
-                if current_chunk_content:
-                    current_chunk_content += " " + para_content
-                else:
-                    current_chunk_content = para_content
+                current_chunk_content = potential_content
                 current_chunk_paragraphs.append(paragraph)
         
         # Add final chunk if there's remaining content
@@ -530,8 +584,51 @@ class EnhancedDocumentProcessor:
             )
             chunks.append(chunk)
         
-        logger.info(f"[{filename}] Structure-aware chunking: {len(paragraphs)} paragraphs → {len(chunks)} chunks")
-        return chunks
+        # Post-process to ensure no chunks are too large
+        final_chunks = []
+        for chunk in chunks:
+            if len(chunk['content']) > self.chunk_size:
+                # Split large chunks by sentences
+                sentences = chunk['content'].split('. ')
+                sub_chunk_content = ""
+                sub_chunk_index = 0
+                
+                for sentence in sentences:
+                    sentence = sentence.strip()
+                    if not sentence:
+                        continue
+                        
+                    if not sentence.endswith('.') and not sentence.endswith('?') and not sentence.endswith('!'):
+                        sentence += '.'
+                    
+                    potential_sub_chunk = sub_chunk_content + (" " + sentence if sub_chunk_content else sentence)
+                    
+                    if len(potential_sub_chunk) > self.chunk_size and sub_chunk_content:
+                        # Create sub-chunk
+                        sub_chunk = self._create_enhanced_chunk_dict(
+                            sub_chunk_content, filename, company, year, 
+                            len(final_chunks),
+                            structure_info=chunk.get('structure_info', {})
+                        )
+                        final_chunks.append(sub_chunk)
+                        sub_chunk_content = sentence
+                    else:
+                        sub_chunk_content = potential_sub_chunk
+                
+                # Add final sub-chunk
+                if sub_chunk_content.strip():
+                    sub_chunk = self._create_enhanced_chunk_dict(
+                        sub_chunk_content, filename, company, year, 
+                        len(final_chunks),
+                        structure_info=chunk.get('structure_info', {})
+                    )
+                    final_chunks.append(sub_chunk)
+            else:
+                chunk['chunk_index'] = len(final_chunks)
+                final_chunks.append(chunk)
+        
+        logger.info(f"[{filename}] Structure-aware chunking: {len(paragraphs)} paragraphs → {len(final_chunks)} chunks")
+        return final_chunks
 
     def _create_enhanced_chunk_dict(self, content: str, filename: str, company: str, year: str, index: int, structure_info: Dict = None) -> Dict[str, Any]:
         """

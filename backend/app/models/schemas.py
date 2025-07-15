@@ -283,18 +283,51 @@ class DocumentProcessingProgress(BaseModel):
     chunks_created: int = 0
     tokens_used: int = 0
     
+class DocumentProcessingStatus(BaseModel):
+    """Status of document processing."""
+    id: str = Field(..., description="Unique processing ID")
+    filename: str = Field(..., description="Name of the file being processed")
+    status: str = Field(..., description="Processing status: processing, extracting, chunking, embedding, completed, failed")
+    progress: int = Field(default=0, description="Progress percentage (0-100)")
+    started_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    completed_at: Optional[datetime] = None
+    message: str = Field(default="", description="Status message")
+    error: Optional[str] = None
+
+class ProcessingResult(BaseModel):
+    """Result of document processing."""
+    processing_id: str = Field(..., description="Unique processing ID")
+    filename: str = Field(..., description="Name of the processed file")
+    status: str = Field(..., description="Final processing status")
+    chunks_created: int = Field(default=0, description="Number of chunks created")
+    characters_processed: int = Field(default=0, description="Number of characters processed")
+    processing_time_seconds: float = Field(default=0.0, description="Processing time in seconds")
+    error: Optional[str] = None
+
+class DocumentUploadBatchRequest(BaseModel):
+    """Request for uploading documents in batch."""
+    files: List[str] = Field(..., description="List of file paths or identifiers")
+    batch_processing: bool = Field(default=True, description="Enable batch processing")
+    
+class DocumentUploadBatchResponse(BaseModel):
+    """Response for document upload batch."""
+    processing_ids: List[str] = Field(..., description="List of processing IDs")
+    batch_id: Optional[str] = None
+    message: str = Field(default="Documents uploaded successfully")
+    
 class BatchProcessingStatus(BaseModel):
-    batch_id: str
-    total_documents: int
-    completed_documents: int
-    failed_documents: int
-    current_processing: List[DocumentProcessingProgress]
-    overall_progress_percent: float = Field(ge=0, le=100)
-    started_at: datetime
-    estimated_completion: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
-    status: str = "processing"  # "processing", "completed", "failed"
-    error_message: Optional[str] = None
+    """Status of batch processing."""
+    batch_id: str = Field(..., description="Unique batch ID")
+    total_documents: int = Field(..., description="Total number of documents in batch")
+    completed_documents: int = Field(default=0, description="Number of completed documents")
+    failed_documents: int = Field(default=0, description="Number of failed documents")
+    processing_documents: int = Field(default=0, description="Number of documents currently processing")
+    started_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    completed_at: Optional[datetime] = None
+    status: str = Field(default="processing", description="Overall batch status")
+    results: List[ProcessingResult] = Field(default_factory=list)
 
 # SEC Document Processing Models
 class ProcessDocumentRequest(BaseModel):

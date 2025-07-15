@@ -105,6 +105,7 @@ class MockEmbeddingData:
 class AzureServiceManager:
     def __init__(self):
         self.search_client = None
+        self.search_client_upload = None
         self.async_search_client = None
         self.search_index_client = None
         self.form_recognizer_client = None
@@ -150,6 +151,12 @@ class AzureServiceManager:
             self.search_client = SearchClient(
                 endpoint=search_endpoint,
                 index_name=settings.search_index,
+                credential=self.search_credential
+            )
+
+            self.search_client_upload = SearchClient(
+                endpoint=search_endpoint,
+                index_name=settings.search_index_upload,
                 credential=self.search_credential
             )
             
@@ -765,7 +772,7 @@ class AzureServiceManager:
                 return False
             
             # Use sync client for upload
-            result = self.search_client.upload_documents(validated_documents)
+            result = self.search_client_upload.upload_documents(validated_documents)
             logger.info(f"Successfully uploaded {len(validated_documents)} documents")
             return True
                 
