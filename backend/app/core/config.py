@@ -11,13 +11,14 @@ class Settings(BaseSettings):
 
     search_endpoint: str = os.getenv("SEARCH_ENDPOINT", "")
     search_index: str = os.getenv("SEARCH_INDEX", "adaptive-rag")
+    search_index_upload: str = os.getenv("SEARCH_INDEX_UPLOAD", "adaptive-rag-upload")
     search_admin_key: str = os.getenv("SEARCH_ADMIN_KEY", "")
     
     foundry_endpoint: Optional[str] = None
     foundry_api_key: Optional[str] = None
     
-    document_intel_account_url: str = ""
-    document_intel_key: str = ""
+    document_intel_account_url: str = os.getenv("DOCUMENT_INTEL_ACCOUNT_URL", "")
+    document_intel_key: str = os.getenv("DOCUMENT_INTEL_KEY", "")
         
     tenant_id: Optional[str] = None
     api_client_id: Optional[str] = None

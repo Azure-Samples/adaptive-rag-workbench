@@ -76,6 +76,10 @@ def _adapt_azure_service_result(result: Dict[str, Any], filename: str) -> Dict[s
     Adapt the Azure Service Manager result to the expected format
     """
     try:
+        logger.info(f"[{filename}] Adapting Azure service result, keys: {list(result.keys())}")
+        logger.info(f"[{filename}] Raw content length: {len(result.get('content', ''))}")
+        logger.info(f"[{filename}] Raw content preview: {repr(result.get('content', '')[:200])}")
+        
         extracted = {
             "content": result.get('content', ''),
             "pages": [],
