@@ -25,6 +25,14 @@ services:
     docker:
       path: ./Dockerfile
       context: .
+      buildArgs:
+        - "VITE_API_BASE_URL=https://caapi-pt7qjgzmrnxgo.politepond-02f6cb2e.eastus2.azurecontainerapps.io/api"
+        - "VITE_AAD_CLIENT_ID=c448ea01-dc6a-4aaa-910d-e6c307db9fc1"
+        - "VITE_AAD_TENANT_ID=56643691-ef04-4208-a672-7ffca73f561c"
+        - "VITE_AAD_USER_FLOW=emailsignflow"
+        - "VITE_AAD_AUTHORITY=https://gkadaptiverag.ciamlogin.com/"
+        - "VITE_AAD_REDIRECT_URI=https://caweb-pt7qjgzmrnxgo.politepond-02f6cb2e.eastus2.azurecontainerapps.io/redirect"
+        - "VITE_API_SCOPE=api://c448ea01-dc6a-4aaa-910d-e6c307db9fc1/access_as_user"
 
 infra:
   provider: bicep
@@ -56,8 +64,4 @@ hooks:
       from app.ingestion.indexer_job import create_search_index
       asyncio.run(create_search_index())
       "
-  prepackage:
-    shell: sh
-    run: |
-      echo "Building frontend..."
-      cd frontend && npm install && npm run build
+

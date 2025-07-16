@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
+import { apiService } from '../services/api';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -81,7 +82,7 @@ export function useChatStream(mode: string) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch(`/api/chat/sessions/${sessionId}/history`, {
+      const response = await fetch(`${apiService.baseUrl}/chat/sessions/${sessionId}/history`, {
         method: 'GET',
         headers,
       });
@@ -147,7 +148,7 @@ export function useChatStream(mode: string) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch('/api/chat', {
+      const response = await fetch(`${apiService.baseUrl}/chat`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ 

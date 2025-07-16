@@ -63,11 +63,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
     
     try {
-      console.log('Attempting to acquire token with scope:', import.meta.env.VITE_API_SCOPE);
+      console.log('Attempting to acquire token with scope:', import.meta.env.VITE_API_SCOPE || 'api://c448ea01-dc6a-4aaa-910d-e6c307db9fc1/access_as_user');
       console.log('Account:', accounts[0]);
       
       const response = await instance.acquireTokenSilent({
-        scopes: [import.meta.env.VITE_API_SCOPE],
+        scopes: [import.meta.env.VITE_API_SCOPE || 'api://c448ea01-dc6a-4aaa-910d-e6c307db9fc1/access_as_user'],
         account: accounts[0]
       });
       console.log('Token acquired successfully');
@@ -75,9 +75,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       console.error('Failed to acquire token:', error);
       console.log('Environment variables:', {
-        VITE_API_SCOPE: import.meta.env.VITE_API_SCOPE,
-        VITE_AAD_CLIENT_ID: import.meta.env.VITE_AAD_CLIENT_ID,
-        VITE_AAD_TENANT_ID: import.meta.env.VITE_AAD_TENANT_ID
+        VITE_API_SCOPE: import.meta.env.VITE_API_SCOPE || 'api://c448ea01-dc6a-4aaa-910d-e6c307db9fc1/access_as_user',
+        VITE_AAD_CLIENT_ID: import.meta.env.VITE_AAD_CLIENT_ID || 'c448ea01-dc6a-4aaa-910d-e6c307db9fc1',
+        VITE_AAD_TENANT_ID: import.meta.env.VITE_AAD_TENANT_ID || '56643691-ef04-4208-a672-7ffca73f561c'
       });
       return null;
     }

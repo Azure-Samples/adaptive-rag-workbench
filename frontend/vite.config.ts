@@ -11,12 +11,13 @@ export default defineConfig({
   },
   server: {
     port: 5175,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8002',
-        changeOrigin: true,
-      },
-    },
+    // Commenting out proxy to use direct API calls to Azure backend
+    // proxy: {
+    //   '/api': {
+    //     target: process.env.VITE_PROXY_TARGET || 'http://localhost:8002',
+    //     changeOrigin: true,
+    //   },
+    // },
   },
 })
 
