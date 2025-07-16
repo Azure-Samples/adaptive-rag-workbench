@@ -4,6 +4,7 @@ import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { CompanySearch } from '../components/CompanySearch';
+import { DocumentUpload } from '../components/DocumentUpload';
 import { Upload, FileText, RefreshCw, Database, TrendingUp, Building2, Search, CheckCircle, AlertCircle, Clock, Zap, Settings, Trash2, ShieldAlert } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -503,74 +504,7 @@ export function AdaptiveKBManagement() {
                   </div>
                 </div>
 
-            <div className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
-              theme === 'dark' 
-                ? 'border-gray-600 hover:border-gray-500' 
-                : theme === 'customer' 
-                  ? 'border-customer-300 hover:border-customer-500' 
-                  : 'border-gray-300 hover:border-microsoft-purple'
-            }`}>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.html,.htm"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-
-              <div className="space-y-6">
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto ${
-                  theme === 'dark' 
-                    ? 'bg-gray-700' 
-                    : theme === 'customer' 
-                      ? 'bg-customer-100' 
-                      : 'bg-gray-100'
-                }`}>
-                  <FileText className={`h-8 w-8 ${
-                    theme === 'dark' 
-                      ? 'text-gray-400' 
-                      : theme === 'customer' 
-                        ? 'text-customer-500' 
-                        : 'text-gray-400'
-                  }`} />
-                </div>
-
-                <div>
-                  <Button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                    className={`px-8 py-3 text-white ${
-                      theme === 'dark' 
-                        ? 'bg-gray-600 hover:bg-gray-700' 
-                        : theme === 'customer' 
-                          ? 'bg-customer-500 hover:bg-customer-600' 
-                          : 'bg-microsoft-purple hover:bg-purple-700'
-                    }`}
-                  >
-                    {isUploading ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Choose File
-                      </>
-                    )}
-                  </Button>
-                  <p className={`text-sm mt-3 ${
-                    theme === 'dark' 
-                      ? 'text-gray-400' 
-                      : theme === 'customer' 
-                        ? 'text-customer-600' 
-                        : 'text-gray-500'
-                  }`}>
-                    Supports PDF, HTML files • Maximum size: 50MB
-                  </p>
-                </div>
-              </div>
-            </div>
+            <DocumentUpload />
 
             {/* Progress Tracking Toggle */}
             <div className="mt-4 flex items-center space-x-3">

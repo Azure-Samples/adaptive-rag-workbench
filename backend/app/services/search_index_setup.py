@@ -23,15 +23,24 @@ async def setup_vector_search_index():
             SearchField(name="content", type=SearchFieldDataType.String, searchable=True),
             SearchField(name="title", type=SearchFieldDataType.String, searchable=True),
             SearchField(name="document_id", type=SearchFieldDataType.String, filterable=True),
-            SearchField(name="source", type=SearchFieldDataType.String),
+            SearchField(name="source", type=SearchFieldDataType.String, filterable=True),
             SearchField(name="document_type", type=SearchFieldDataType.String, filterable=True),
             SearchField(name="company", type=SearchFieldDataType.String, filterable=True, facetable=True),
+            SearchField(name="year", type=SearchFieldDataType.String, filterable=True, facetable=True),
             SearchField(name="filing_date", type=SearchFieldDataType.String, filterable=True, sortable=True),
             SearchField(name="section_type", type=SearchFieldDataType.String, filterable=True, facetable=True),
+            SearchField(name="chunk_index", type=SearchFieldDataType.Int32, filterable=True, sortable=True),
+            SearchField(name="content_length", type=SearchFieldDataType.Int32, filterable=True, sortable=True),
+            SearchField(name="word_count", type=SearchFieldDataType.Int32, filterable=True, sortable=True),
             SearchField(name="content_vector", type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
                        vector_search_dimensions=1536, vector_search_profile_name="vector-profile"),
             SearchField(name="credibility_score", type=SearchFieldDataType.Double, filterable=True, sortable=True),
-            SearchField(name="citation_info", type=SearchFieldDataType.String)
+            SearchField(name="citation_info", type=SearchFieldDataType.String),
+            SearchField(name="has_structured_content", type=SearchFieldDataType.Boolean, filterable=True),
+            SearchField(name="structure_info", type=SearchFieldDataType.String),
+            SearchField(name="chunk_id", type=SearchFieldDataType.String, filterable=True),
+            SearchField(name="embedding_model", type=SearchFieldDataType.String, filterable=True),
+            SearchField(name="embedding_dimensions", type=SearchFieldDataType.Int32, filterable=True)
         ]
         
         vector_search = VectorSearch(
@@ -49,7 +58,7 @@ async def setup_vector_search_index():
         )
         
         index = SearchIndex(
-            name=settings.search_index,
+            name=settings.search_index_upload,
             fields=fields,
             vector_search=vector_search
         )
@@ -72,8 +81,8 @@ async def delete_search_index():
             credential=AzureKeyCredential(settings.search_admin_key)
         )
         
-        await index_client.delete_index(settings.search_index)
-        logger.info(f"Successfully deleted search index: {settings.search_index}")
+        await index_client.delete_index(settings.search_index_upload)
+        logger.info(f"Successfully deleted search index: {settings.search_index_upload}")
         
         await index_client.close()
         return True
@@ -90,7 +99,7 @@ async def get_index_stats():
             credential=AzureKeyCredential(settings.search_admin_key)
         )
         
-        index = await index_client.get_index(settings.search_index)
+        index = await index_client.get_index(settings.search_index_upload)
         
         stats = {
             "name": index.name,

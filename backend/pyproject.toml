@@ -34,6 +34,9 @@ numpy = "^1.24.0"
 azure-ai-projects = "^1.0.0b12"
 azure-ai-agents = "^1.1.0b2"
 edgartools = "^1.0.0"
+langchain = "^0.3.0"
+langchain-text-splitters = "^0.3.0"
+langchain-community = "^0.3.0"
 
 
 [build-system]

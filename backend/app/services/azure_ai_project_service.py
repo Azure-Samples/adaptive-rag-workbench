@@ -29,7 +29,7 @@ class AzureAIProjectService:
             logger.info("Initializing Azure AI Project service with telemetry")
             
             connection_string = "InstrumentationKey=80610342-8cae-456a-b236-e7964d8bca79;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/;ApplicationId=c635d8b8-9181-4717-89e2-773643eef511"
-            configure_azure_monitor(connection_string=connection_string)
+            #configure_azure_monitor(connection_string=connection_string)
             logger.info("Azure Monitor tracing configured")
             
             endpoint = "https://citigkpoc-resource.services.ai.azure.com/api/projects/citigkpoc"
