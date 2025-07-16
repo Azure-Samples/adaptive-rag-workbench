@@ -150,6 +150,7 @@ module web './app/web.bicep' = {
     image: !empty(webImage) ? webImage : 'nginx:latest'
     registryServer: containerRegistry.outputs.loginServer
     identityName: apiIdentity.outputs.identityName
+    // Azure AD parameters now passed as build args in azure.yaml
   }
 }
 

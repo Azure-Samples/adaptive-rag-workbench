@@ -9,6 +9,8 @@ param image string
 param registryServer string
 param identityName string
 
+// Azure AD parameters no longer needed - passed as build args
+
 resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01' existing = {
   name: containerAppsEnvironmentName
 }
@@ -53,10 +55,6 @@ resource web 'Microsoft.App/containerApps@2023-05-01' = {
           image: image
           name: 'web'
           env: [
-            {
-              name: 'VITE_API_BASE_URL'
-              value: apiBaseUrl
-            }
             {
               name: 'API_SERVICE_NAME'
               value: apiServiceName

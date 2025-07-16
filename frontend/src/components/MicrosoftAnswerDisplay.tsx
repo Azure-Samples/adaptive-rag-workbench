@@ -8,6 +8,7 @@ import { MessageSquare, BarChart3, List, ExternalLink, Eye, Plus, RefreshCw } fr
 import { Button } from './ui/button';
 import { useAuth } from '../auth/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { apiService } from '../services/api';
 
 interface Citation {
   id: string;
@@ -92,7 +93,7 @@ export function MicrosoftAnswerDisplay({
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch('/api/chat/follow-up-questions', {
+      const response = await fetch(`${apiService.baseUrl}/chat/follow-up-questions`, {
         method: 'POST',
         headers,
         body: JSON.stringify({

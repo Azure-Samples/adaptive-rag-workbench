@@ -132,7 +132,7 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
 
   const handleProcessDocument = async (doc: DocumentResult) => {
     try {
-      const response = await fetch('/api/v1/sec/documents/process', {
+      const response = await fetch(`${apiService.baseUrl}/v1/sec/documents/process`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -300,7 +300,7 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
     try {
       if (searchFilters.searchType === 'company') {
         // Use SEC documents API for company search
-        const response = await fetch('/api/v1/sec/filings/specific', {
+        const response = await fetch(`${apiService.baseUrl}/v1/sec/filings/specific`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -332,7 +332,7 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
         onDocumentsFound(results);
       } else {
         // Use legacy API for website search
-        const response = await fetch('/api/companies/search', {
+        const response = await fetch(`${apiService.baseUrl}/companies/search`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

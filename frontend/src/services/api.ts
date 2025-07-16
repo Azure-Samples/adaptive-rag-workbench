@@ -1,6 +1,12 @@
-const API_BASE_URL = import.meta.env.MODE === 'production' 
-  ? '/api/v1' 
-  : 'http://localhost:8002/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+  (import.meta.env.MODE === 'production' 
+    ? '/api' 
+    : 'http://localhost:8002/api');
+
+// Debug logging for API base URL
+console.log(`🚀 [API] API_BASE_URL initialized:`, API_BASE_URL);
+console.log(`🚀 [API] Environment:`, import.meta.env.MODE);
+console.log(`🚀 [API] VITE_API_BASE_URL:`, import.meta.env.VITE_API_BASE_URL);
 
 export interface DocumentUploadRequest {
   files: File[];
@@ -68,11 +74,22 @@ export interface AvailableEvaluatorsResponse {
 }
 
 class ApiService {
+  // Expose the base URL for direct fetch calls
+  public get baseUrl(): string {
+    return API_BASE_URL;
+  }
+
   private async makeRequest<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
+    
+    // Enhanced logging for debugging
+    console.log(`🔍 [API] Making request to: ${url}`);
+    console.log(`🔍 [API] API_BASE_URL: ${API_BASE_URL}`);
+    console.log(`🔍 [API] Endpoint: ${endpoint}`);
+    console.log(`🔍 [API] Method: ${options.method || 'GET'}`);
     
     const response = await fetch(url, {
       headers: {
@@ -84,8 +101,19 @@ class ApiService {
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error(`❌ [API] Error Response:`, {
+        url,
+        status: response.status,
+        statusText: response.statusText,
+        errorText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
       throw new Error(`API Error: ${response.status} - ${errorText}`);
     }
+
+    console.log(`✅ [API] Success response from: ${url}`);
+    console.log(`✅ [API] Status: ${response.status}`);
+    
 
     return response.json();
   }

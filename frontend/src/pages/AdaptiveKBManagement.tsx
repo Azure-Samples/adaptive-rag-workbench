@@ -6,6 +6,7 @@ import { Badge } from '../components/ui/badge';
 import { CompanySearch } from '../components/CompanySearch';
 import { Upload, FileText, RefreshCw, Database, TrendingUp, Building2, Search, CheckCircle, AlertCircle, Clock, Zap, Settings, Trash2, ShieldAlert } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import { apiService } from '../services/api';
 
 interface ProcessingStep {
   id: string;
@@ -126,7 +127,7 @@ export function AdaptiveKBManagement() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/upload', {
+      const response = await fetch(`${apiService.baseUrl}/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -317,7 +318,7 @@ export function AdaptiveKBManagement() {
 
   const fetchIndexStats = async () => {
     try {
-      const response = await fetch('/api/index-stats');
+      const response = await fetch(`${apiService.baseUrl}/index-stats`);
       const stats = await response.json();
       setIndexStats(stats);
     } catch (error) {
@@ -327,7 +328,7 @@ export function AdaptiveKBManagement() {
 
   const fetchAzureServiceStatus = async () => {
     try {
-      const response = await fetch('/api/azure-service-status');
+      const response = await fetch(`${apiService.baseUrl}/azure-service-status`);
       const status = await response.json();
       setAzureServiceStatus(status);
     } catch (error) {
@@ -344,7 +345,7 @@ export function AdaptiveKBManagement() {
     setAdminOperationStatus('Recreating search index...');
 
     try {
-      const response = await fetch('/api/recreate-index', { method: 'POST' });
+      const response = await fetch(`${apiService.baseUrl}/recreate-index`, { method: 'POST' });
       const result = await response.json();
       
       if (result.status === 'success') {
@@ -367,7 +368,7 @@ export function AdaptiveKBManagement() {
     setAdminOperationStatus('Ensuring search index exists...');
 
     try {
-      const response = await fetch('/api/ensure-index', { method: 'POST' });
+      const response = await fetch(`${apiService.baseUrl}/ensure-index`, { method: 'POST' });
       const result = await response.json();
       
       if (result.status === 'success') {
@@ -617,7 +618,7 @@ export function AdaptiveKBManagement() {
                   <Button
                     onClick={async () => {
                       try {
-                        const response = await fetch('/api/recreate-index', { method: 'POST' });
+                        const response = await fetch(`${apiService.baseUrl}/recreate-index`, { method: 'POST' });
                         const result = await response.json();
                         alert(`Index recreation: ${result.status} - ${result.message}`);
                       } catch (e) {
