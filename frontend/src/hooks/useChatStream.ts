@@ -33,12 +33,22 @@ interface ProcessingMetadata {
   success: boolean;
 }
 
+interface TracingInfo {
+  thread_id?: string;
+  run_id?: string;
+  agent_id?: string;
+  status?: string;
+  created_at?: string;
+  completed_at?: string;
+}
+
 interface ChatResponse {
   messages: Message[];
   citations: Citation[];
   queryRewrites: string[];
   tokenUsage?: TokenUsage;
   processingMetadata?: ProcessingMetadata;
+  tracingInfo?: TracingInfo;
   isStreaming: boolean;
   sessionId: string;
 }
@@ -50,6 +60,7 @@ export function useChatStream(mode: string) {
   const [queryRewrites, setQueryRewrites] = useState<string[]>([]);
   const [tokenUsage, setTokenUsage] = useState<TokenUsage | undefined>();
   const [processingMetadata, setProcessingMetadata] = useState<ProcessingMetadata | undefined>();
+  const [tracingInfo, setTracingInfo] = useState<TracingInfo | undefined>();
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [sessionId, setSessionId] = useState<string>('');
@@ -113,6 +124,9 @@ export function useChatStream(mode: string) {
           if (lastAssistantMessage.processing_metadata) {
             setProcessingMetadata(lastAssistantMessage.processing_metadata);
           }
+          if (lastAssistantMessage.tracing_info) {
+            setTracingInfo(lastAssistantMessage.tracing_info);
+          }
         }
       }
     } catch (error) {
@@ -135,6 +149,7 @@ export function useChatStream(mode: string) {
     setQueryRewrites([]);
     setTokenUsage(undefined);
     setProcessingMetadata(undefined);
+    setTracingInfo(undefined);
 
     try {
       // Get access token (will be 'demo-token' in demo mode)
@@ -255,6 +270,10 @@ export function useChatStream(mode: string) {
                   setProcessingMetadata(data.processing);
                 }
                 
+                if (data.type === 'tracing_info' && data.tracing) {
+                  setTracingInfo(data.tracing);
+                }
+                
                 if (data.done) {
                   setIsStreaming(false);
                   break;
@@ -285,6 +304,7 @@ export function useChatStream(mode: string) {
     setQueryRewrites([]);
     setTokenUsage(undefined);
     setProcessingMetadata(undefined);
+    setTracingInfo(undefined);
   }, []);
 
   const startNewSession = useCallback(() => {
@@ -300,6 +320,7 @@ export function useChatStream(mode: string) {
     queryRewrites,
     tokenUsage,
     processingMetadata,
+    tracingInfo,
     isStreaming,
     sessionId
   };

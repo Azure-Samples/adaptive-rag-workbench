@@ -9,6 +9,8 @@ import { Button } from './ui/button';
 import { useAuth } from '../auth/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { apiService } from '../services/api';
+import { TokenUsageFooter } from './TokenUsageFooter';
+import { TracingModal } from './TracingModal';
 
 interface Citation {
   id: string;
@@ -38,12 +40,22 @@ interface Message {
   timestamp: Date;
 }
 
+interface TracingInfo {
+  thread_id?: string;
+  run_id?: string;
+  agent_id?: string;
+  status?: string;
+  created_at?: string;
+  completed_at?: string;
+}
+
 interface PerplexityAnswerDisplayProps {
   messages: Message[];
   citations: Citation[];
   queryRewrites: string[];
   tokenUsage?: TokenUsage;
   processingMetadata?: ProcessingMetadata;
+  tracingInfo?: TracingInfo;
   isStreaming: boolean;
   ragMode: string;
   sessionId?: string;
@@ -57,6 +69,7 @@ export function MicrosoftAnswerDisplay({
   queryRewrites,
   tokenUsage,
   processingMetadata,
+  tracingInfo,
   isStreaming,
   ragMode,
   sessionId,
@@ -65,6 +78,7 @@ export function MicrosoftAnswerDisplay({
 }: PerplexityAnswerDisplayProps) {
   const [selectedCitation, setSelectedCitation] = useState<Citation | null>(null);
   const [showCitationModal, setShowCitationModal] = useState(false);
+  const [showTracingModal, setShowTracingModal] = useState(false);
   const [followUpQuestions, setFollowUpQuestions] = useState<string[]>([]);
   const [isLoadingFollowUp, setIsLoadingFollowUp] = useState(false);
   const { getAccessToken } = useAuth();
@@ -293,6 +307,16 @@ export function MicrosoftAnswerDisplay({
                 </div>
               )}
             </div>
+          )}
+          
+          {/* Token Usage Footer */}
+          {!isStreaming && (
+            <TokenUsageFooter
+              tokenUsage={tokenUsage}
+              processingMetadata={processingMetadata}
+              onViewRunInfo={() => setShowTracingModal(true)}
+              theme={theme}
+            />
           )}
         </Card>
       </TabsContent>
@@ -592,6 +616,17 @@ export function MicrosoftAnswerDisplay({
           </div>
         </div>
       )}
+
+      {/* Tracing Modal */}
+      <TracingModal
+        isOpen={showTracingModal}
+        onClose={() => setShowTracingModal(false)}
+        tracingInfo={tracingInfo}
+        tokenUsage={tokenUsage}
+        processingMetadata={processingMetadata}
+        userMessage={userMessage?.content}
+        assistantMessage={assistantMessage?.content}
+      />
     </div>
   );
 }

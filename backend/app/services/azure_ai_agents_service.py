@@ -84,6 +84,14 @@ class AzureAIAgentsService:
                 "citations": [],  # Extract from agent response
                 "query_rewrites": [question],
                 "token_usage": token_usage,
+                "tracing_info": {
+                    "thread_id": thread.id,
+                    "run_id": run.id,
+                    "agent_id": agent.id,
+                    "status": completed_run.status,
+                    "created_at": completed_run.created_at.isoformat() if hasattr(completed_run.created_at, 'isoformat') else str(completed_run.created_at),
+                    "completed_at": completed_run.completed_at.isoformat() if hasattr(completed_run.completed_at, 'isoformat') else str(completed_run.completed_at) if completed_run.completed_at else None
+                },
                 "success": True,
                 "retrieval_method": "azure_ai_agents_deep_research"
             }
@@ -196,6 +204,14 @@ Based on the above question and answer, generate 3-5 relevant follow-up question
             return {
                 "follow_up_questions": follow_up_questions,
                 "token_usage": token_usage,
+                "tracing_info": {
+                    "thread_id": thread.id,
+                    "run_id": run.id,
+                    "agent_id": agent.id,
+                    "status": completed_run.status,
+                    "created_at": completed_run.created_at.isoformat() if hasattr(completed_run.created_at, 'isoformat') else str(completed_run.created_at),
+                    "completed_at": completed_run.completed_at.isoformat() if hasattr(completed_run.completed_at, 'isoformat') else str(completed_run.completed_at) if completed_run.completed_at else None
+                },
                 "success": True
             }
             

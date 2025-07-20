@@ -112,6 +112,10 @@ async def handle_rag_modes(request: ChatRequest, session_id: str, current_user: 
             if token_usage:
                 yield f"data: {json.dumps({'type': 'token_usage', 'usage': token_usage})}\n\n"
             
+            tracing_info = result.get("tracing_info", {})
+            if tracing_info:
+                yield f"data: {json.dumps({'type': 'tracing_info', 'tracing': tracing_info})}\n\n"
+            
             processing_metadata = {
                 'processing_time_ms': result.get('processing_time_ms', 0),
                 'retrieval_method': result.get('retrieval_method', 'unknown'),
@@ -125,6 +129,7 @@ async def handle_rag_modes(request: ChatRequest, session_id: str, current_user: 
                 "timestamp": datetime.utcnow().isoformat(),
                 "citations": citations,
                 "token_usage": token_usage,
+                "tracing_info": tracing_info,
                 "processing_metadata": processing_metadata
             }
             await azure_service_manager.save_session_history(session_id, assistant_message)
@@ -314,6 +319,7 @@ async def process_deep_research_rag(prompt: str, session_id: str, verification_l
             "citations": agents_result.get("citations", []),
             "query_rewrites": agents_result.get("query_rewrites", [prompt]),
             "token_usage": agents_result.get("token_usage", {}),
+            "tracing_info": agents_result.get("tracing_info", {}),
             "processing_time_ms": 0,  # Will be calculated by caller
             "retrieval_method": "azure_ai_agents_deep_research",
             "verification_level": verification_level,
