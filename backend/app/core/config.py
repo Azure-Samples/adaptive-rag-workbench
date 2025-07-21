@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     azure_cosmos_container_name: str = os.getenv("AZURE_COSMOS_CONTAINER_NAME", "chat-sessions")
     azure_cosmos_evaluation_container_name: str = os.getenv("AZURE_COSMOS_EVALUATION_CONTAINER_NAME", "evaluation-results")
     azure_cosmos_token_usage_container_name: str = os.getenv("AZURE_COSMOS_TOKEN_USAGE_CONTAINER_NAME", "token-usage")
+    azure_cosmos_key: str = os.getenv("AZURE_COSMOS_KEY", "")
     
     azure_storage_account_name: Optional[str] = None
     azure_storage_container_name: Optional[str] = None

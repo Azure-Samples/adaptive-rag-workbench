@@ -35,18 +35,13 @@ class AzureAIProjectService:
             endpoint = "https://citigkpoc-resource.services.ai.azure.com/api/projects/citigkpoc"
             credential = DefaultAzureCredential()
             
-            subscription_id = "placeholder-subscription-id"
-            resource_group_name = "placeholder-resource-group"
-            project_name = "citigkpoc"
-            
+            # Try to initialize the project client with proper endpoint
             try:
                 self.project_client = AIProjectClient(
-                    subscription_id=subscription_id,
-                    resource_group_name=resource_group_name,
-                    project_name=project_name,
+                    endpoint=endpoint,
                     credential=credential
                 )
-                logger.info(f"Project client initialized for project: {project_name}")
+                logger.info(f"Project client initialized with endpoint: {endpoint}")
             except Exception as e:
                 logger.warning(f"AIProjectClient initialization failed: {e}")
                 self.project_client = None

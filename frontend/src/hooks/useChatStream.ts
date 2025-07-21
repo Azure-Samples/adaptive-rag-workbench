@@ -6,6 +6,12 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  // Metadata for assistant messages
+  citations?: Citation[];
+  queryRewrites?: string[];
+  tokenUsage?: TokenUsage;
+  processingMetadata?: ProcessingMetadata;
+  tracingInfo?: TracingInfo;
 }
 
 interface Citation {
@@ -54,7 +60,7 @@ interface ChatResponse {
 }
 
 
-export function useChatStream(mode: string) {
+export function useChatStream(mode: string, enableSessions: boolean = true, onModeChange?: (mode: string) => void) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [citations, setCitations] = useState<Citation[]>([]);
   const [queryRewrites, setQueryRewrites] = useState<string[]>([]);
@@ -67,16 +73,22 @@ export function useChatStream(mode: string) {
   const { getAccessToken } = useAuth();
 
   useEffect(() => {
-    const storedSessionId = localStorage.getItem(`chat_session_${mode}`);
-    if (storedSessionId) {
-      setSessionId(storedSessionId);
-      loadSessionHistory(storedSessionId);
+    if (enableSessions) {
+      const storedSessionId = localStorage.getItem(`chat_session_${mode}`);
+      if (storedSessionId) {
+        setSessionId(storedSessionId);
+        loadSessionHistory(storedSessionId);
+      } else {
+        const newSessionId = generateSessionId();
+        setSessionId(newSessionId);
+        localStorage.setItem(`chat_session_${mode}`, newSessionId);
+      }
     } else {
-      const newSessionId = generateSessionId();
-      setSessionId(newSessionId);
-      localStorage.setItem(`chat_session_${mode}`, newSessionId);
+      // For non-session mode, use a temporary session ID but don't persist or load history
+      setSessionId(`temp_${Date.now()}`);
+      setMessages([]);
     }
-  }, [mode]);
+  }, [mode, enableSessions]);
 
   const generateSessionId = (): string => {
     return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -101,13 +113,29 @@ export function useChatStream(mode: string) {
       if (response.ok) {
         const data = await response.json();
         const sessionMessages = data.messages || [];
+        const sessionMode = data.mode || 'fast-rag';
+        
+        console.log('Loading session history:', sessionMessages.length, 'messages', 'mode:', sessionMode);
+        
+        // Update the mode if callback is provided and mode is different
+        if (onModeChange && sessionMode !== mode) {
+          console.log('Switching mode from', mode, 'to', sessionMode);
+          onModeChange(sessionMode);
+        }
         
         const convertedMessages: Message[] = sessionMessages.map((msg: any) => ({
           role: msg.role,
           content: msg.content,
-          timestamp: new Date(msg.timestamp)
+          timestamp: new Date(msg.timestamp),
+          // Include metadata for assistant messages
+          citations: msg.citations || undefined,
+          queryRewrites: msg.query_rewrites || undefined,
+          tokenUsage: msg.token_usage || undefined,
+          processingMetadata: msg.processing_metadata || undefined,
+          tracingInfo: msg.tracing_info || undefined
         }));
         
+        console.log('Converted messages:', convertedMessages);
         setMessages(convertedMessages);
         
         const lastAssistantMessage = sessionMessages
@@ -169,7 +197,11 @@ export function useChatStream(mode: string) {
         body: JSON.stringify({ 
           prompt: content,
           mode: mode,
-          session_id: sessionId
+          session_id: sessionId,
+          conversation_history: messages.map(msg => ({
+            role: msg.role,
+            content: msg.content
+          }))
         }),
       });
 
@@ -180,6 +212,11 @@ export function useChatStream(mode: string) {
       const reader = response.body?.getReader();
       let assistantMessage = '';
       let messageIndex = -1;
+      let currentCitations: Citation[] = [];
+      let currentQueryRewrites: string[] = [];
+      let currentTokenUsage: TokenUsage | undefined;
+      let currentProcessingMetadata: ProcessingMetadata | undefined;
+      let currentTracingInfo: TracingInfo | undefined;
 
       if (reader) {
         while (true) {
@@ -209,14 +246,24 @@ export function useChatStream(mode: string) {
                       newMessages.push({
                         role: 'assistant',
                         content: assistantMessage,
-                        timestamp: new Date()
+                        timestamp: new Date(),
+                        citations: currentCitations,
+                        queryRewrites: currentQueryRewrites,
+                        tokenUsage: currentTokenUsage,
+                        processingMetadata: currentProcessingMetadata,
+                        tracingInfo: currentTracingInfo
                       });
                     } else {
                       const existingMessage = newMessages[messageIndex];
                       newMessages[messageIndex] = {
                         role: existingMessage?.role || 'assistant',
                         content: assistantMessage,
-                        timestamp: existingMessage?.timestamp || new Date()
+                        timestamp: existingMessage?.timestamp || new Date(),
+                        citations: currentCitations,
+                        queryRewrites: currentQueryRewrites,
+                        tokenUsage: currentTokenUsage,
+                        processingMetadata: currentProcessingMetadata,
+                        tracingInfo: currentTracingInfo
                       };
                     }
                     
@@ -236,14 +283,24 @@ export function useChatStream(mode: string) {
                       newMessages.push({
                         role: 'assistant',
                         content: assistantMessage,
-                        timestamp: new Date()
+                        timestamp: new Date(),
+                        citations: currentCitations,
+                        queryRewrites: currentQueryRewrites,
+                        tokenUsage: currentTokenUsage,
+                        processingMetadata: currentProcessingMetadata,
+                        tracingInfo: currentTracingInfo
                       });
                     } else {
                       const existingMessage = newMessages[messageIndex];
                       newMessages[messageIndex] = {
                         role: existingMessage?.role || 'assistant',
                         content: assistantMessage,
-                        timestamp: existingMessage?.timestamp || new Date()
+                        timestamp: existingMessage?.timestamp || new Date(),
+                        citations: currentCitations,
+                        queryRewrites: currentQueryRewrites,
+                        tokenUsage: currentTokenUsage,
+                        processingMetadata: currentProcessingMetadata,
+                        tracingInfo: currentTracingInfo
                       };
                     }
                     
@@ -255,27 +312,48 @@ export function useChatStream(mode: string) {
                 }
                 
                 if (data.type === 'citations' && data.citations) {
+                  currentCitations = data.citations;
                   setCitations(data.citations);
                 }
                 
                 if (data.type === 'query_rewrites' && data.rewrites) {
+                  currentQueryRewrites = data.rewrites;
                   setQueryRewrites(data.rewrites);
                 }
                 
                 if (data.type === 'token_usage' && data.usage) {
+                  currentTokenUsage = data.usage;
                   setTokenUsage(data.usage);
                 }
                 
                 if (data.type === 'metadata' && data.processing) {
+                  currentProcessingMetadata = data.processing;
                   setProcessingMetadata(data.processing);
                 }
                 
                 if (data.type === 'tracing_info' && data.tracing) {
+                  currentTracingInfo = data.tracing;
                   setTracingInfo(data.tracing);
                 }
                 
                 if (data.done) {
                   setIsStreaming(false);
+                  // Final update with all metadata
+                  setMessages(prev => {
+                    const newMessages = [...prev];
+                    if (messageIndex >= 0 && newMessages[messageIndex]) {
+                      const existingMessage = newMessages[messageIndex];
+                      newMessages[messageIndex] = {
+                        ...existingMessage,
+                        citations: currentCitations,
+                        queryRewrites: currentQueryRewrites,
+                        tokenUsage: currentTokenUsage,
+                        processingMetadata: currentProcessingMetadata,
+                        tracingInfo: currentTracingInfo
+                      };
+                    }
+                    return newMessages;
+                  });
                   break;
                 }
               } catch (parseError) {
@@ -308,11 +386,13 @@ export function useChatStream(mode: string) {
   }, []);
 
   const startNewSession = useCallback(() => {
+    if (!enableSessions) return;
+    
     const newSessionId = generateSessionId();
     setSessionId(newSessionId);
     localStorage.setItem(`chat_session_${mode}`, newSessionId);
     clearMessages();
-  }, [mode, clearMessages]);
+  }, [mode, clearMessages, enableSessions]);
 
   const chatResponse: ChatResponse = {
     messages,
@@ -322,7 +402,15 @@ export function useChatStream(mode: string) {
     processingMetadata,
     tracingInfo,
     isStreaming,
-    sessionId
+    sessionId: enableSessions ? sessionId : '' // Don't expose session ID if sessions disabled
+  };
+
+  const switchSession = async (newSessionId: string) => {
+    if (!enableSessions) return;
+    
+    setSessionId(newSessionId);
+    localStorage.setItem(`chat_session_${mode}`, newSessionId);
+    await loadSessionHistory(newSessionId);
   };
 
   return { 
@@ -330,6 +418,7 @@ export function useChatStream(mode: string) {
     isLoading, 
     sendMessage, 
     clearMessages,
-    startNewSession
+    startNewSession: enableSessions ? startNewSession : undefined,
+    switchSession: enableSessions ? switchSession : undefined
   };
 }
