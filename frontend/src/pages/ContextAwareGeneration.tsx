@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { ChatLayout } from '../components/ChatLayout';
 import { MicrosoftAnswerDisplay } from '../components/MicrosoftAnswerDisplay';
 import { MicrosoftInput } from '../components/MicrosoftInput';
+import { SessionHistory } from '../components/SessionHistory';
 import { useChatStream } from '../hooks/useChatStream';
 import { useTheme } from '../contexts/ThemeContext';
 import { Sparkles } from 'lucide-react';
@@ -12,6 +13,15 @@ export function ContextAwareGeneration() {
   const { theme } = useTheme();
   const [query, setQuery] = useState('');
   const [selectedMode, setSelectedMode] = useState<RAGMode>('fast-rag');
+  const [showSessionHistory, setShowSessionHistory] = useState(false);
+
+  // Create a wrapper function to handle mode changes from session switching
+  const handleModeChange = (mode: string) => {
+    if (mode === 'fast-rag' || mode === 'agentic-rag' || mode === 'deep-research-rag') {
+      setSelectedMode(mode as RAGMode);
+    }
+  };
+
   const { 
     messages, 
     citations, 
@@ -22,8 +32,16 @@ export function ContextAwareGeneration() {
     isStreaming,
     sendMessage,
     sessionId,
-    startNewSession
-  } = useChatStream(selectedMode);
+    startNewSession,
+    switchSession
+  } = useChatStream(selectedMode, true, handleModeChange);
+
+  // Switch to a different session without reloading the page
+  const handleSessionSelect = useCallback(async (sessionId: string) => {
+    if (switchSession) {
+      await switchSession(sessionId);
+    }
+  }, [switchSession]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +58,9 @@ export function ContextAwareGeneration() {
   };
 
   const handleNewChat = () => {
-    startNewSession();
+    if (startNewSession) {
+      startNewSession();
+    }
     setQuery('');
   };
 
@@ -48,17 +68,57 @@ export function ContextAwareGeneration() {
   const hasResults = currentMessage && currentMessage.role === 'assistant';
 
   return (
-    <ChatLayout>
-      <div className={`flex-1 overflow-y-auto ${
-        theme === 'dark' 
-          ? 'bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800' 
-          : theme === 'customer' 
-            ? 'bg-gradient-to-br from-customer-50 via-customer-50 to-customer-100' 
-            : 'bg-gradient-to-br from-background via-background to-primary/5'
-      }`}>
-        {/* Content Area */}
-        <div className="p-6">
-          <div className="max-w-5xl mx-auto">
+    <div className="flex h-screen">
+      {/* Session History Sidebar */}
+      {showSessionHistory && (
+        <div className="w-80 border-r bg-background flex-shrink-0">
+          <SessionHistory
+            mode={selectedMode}
+            currentSessionId={sessionId}
+            onSessionSelect={(sessionId) => {
+              // Use our simplified session switching
+              handleSessionSelect(sessionId);
+              setShowSessionHistory(false);
+            }}
+            onNewSession={() => {
+              if (startNewSession) {
+                startNewSession();
+              }
+              setShowSessionHistory(false);
+            }}
+          />
+        </div>
+      )}
+
+      {/* Main Content Container */}
+      <div className="flex-1 flex flex-col">
+        <ChatLayout>
+          <div className={`flex-1 overflow-y-auto ${
+            theme === 'dark' 
+              ? 'bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800' 
+              : theme === 'customer' 
+                ? 'bg-gradient-to-br from-customer-50 via-customer-50 to-customer-100' 
+                : 'bg-gradient-to-br from-background via-background to-primary/5'
+          }`}>
+            {/* Header with Session History Button */}
+            <div className="p-4 border-b">
+              <button
+                onClick={() => setShowSessionHistory(!showSessionHistory)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  theme === 'dark'
+                    ? 'bg-gray-700 text-white hover:bg-gray-600'
+                    : theme === 'customer'
+                      ? 'bg-customer-500 text-white hover:bg-customer-600'
+                      : 'bg-primary text-white hover:bg-primary/90'
+                }`}
+              >
+                {showSessionHistory ? 'Hide' : 'Show'} Sessions
+              </button>
+            </div>
+
+            {/* Content Area */}
+            <div className="p-6">
+              <div className="max-w-5xl mx-auto">
             {!hasResults && !isLoading && (
               <div className="space-y-8">
                 {/* Welcome Message */}
@@ -136,9 +196,11 @@ export function ContextAwareGeneration() {
                 />
               </div>
             )}
+            </div>
+            </div>
           </div>
-        </div>
+        </ChatLayout>
       </div>
-    </ChatLayout>
+    </div>
   );
 }

@@ -226,23 +226,50 @@ class AzureServiceManager:
             
             # Initialize CosmosDB client
             if hasattr(settings, 'azure_cosmos_endpoint') and settings.azure_cosmos_endpoint:
+                logger.info(f"Initializing CosmosDB client with endpoint: {settings.azure_cosmos_endpoint}")
                 try:
-                    if isinstance(self.search_credential, AzureKeyCredential):
-                        # For API key auth, we need a separate Cosmos key
-                        cosmos_credential = getattr(settings, 'azure_cosmos_key', '')
-                    else:
+                    # Check if we have service principal credentials
+                    if (hasattr(settings, 'azure_tenant_id') and settings.azure_tenant_id and
+                        hasattr(settings, 'azure_client_id') and settings.azure_client_id and
+                        hasattr(settings, 'azure_client_secret') and settings.azure_client_secret):
+                        logger.info("Using Service Principal authentication for CosmosDB")
+                        cosmos_credential = ClientSecretCredential(
+                            tenant_id=settings.azure_tenant_id,
+                            client_id=settings.azure_client_id,
+                            client_secret=settings.azure_client_secret
+                        )
+                    elif hasattr(settings, 'azure_cosmos_key') and settings.azure_cosmos_key:
+                        logger.info("Using CosmosDB key for authentication")
+                        cosmos_credential = settings.azure_cosmos_key
+                    elif self.credential:
+                        logger.info("Using existing Azure credential for CosmosDB authentication")
                         cosmos_credential = self.credential
+                    else:
+                        logger.warning("No suitable CosmosDB authentication method found")
+                        self.cosmos_client = None
+                        return
                     
                     self.cosmos_client = CosmosClient(
                         url=settings.azure_cosmos_endpoint,
                         credential=cosmos_credential
                     )
-                    logger.info("CosmosDB client initialized")
+                    
+                    if self.cosmos_client:
+                        logger.info("CosmosDB client initialized successfully")
+                        # Test the connection by listing databases
+                        try:
+                            list(self.cosmos_client.list_databases())
+                            logger.info("CosmosDB connection test successful")
+                        except Exception as test_e:
+                            logger.warning(f"CosmosDB connection test failed: {test_e}")
+                    
                 except Exception as e:
-                    logger.warning(f"Failed to initialize CosmosDB client: {e}")
+                    logger.error(f"Failed to initialize CosmosDB client: {e}")
+                    import traceback
+                    logger.error(f"CosmosDB initialization error details: {traceback.format_exc()}")
                     self.cosmos_client = None
             else:
-                logger.warning("CosmosDB endpoint not configured")
+                logger.warning("CosmosDB endpoint not configured - session storage will be disabled")
                 self.cosmos_client = None
             
             # Ensure search index exists
@@ -472,7 +499,8 @@ class AzureServiceManager:
             SimpleField(name="document_id", type=SearchFieldDataType.String, filterable=True),
             SimpleField(name="section_type", type=SearchFieldDataType.String, filterable=True),
             SimpleField(name="page_number", type=SearchFieldDataType.Int32, filterable=True),
-            SimpleField(name="citation_info", type=SearchFieldDataType.String),                # SEC-specific fields from Edgar tools
+            SimpleField(name="citation_info", type=SearchFieldDataType.String, filterable=True),
+            # SEC-specific fields from Edgar tools
             SimpleField(name="ticker", type=SearchFieldDataType.String, filterable=True),
             SimpleField(name="cik", type=SearchFieldDataType.String, filterable=True),
             SimpleField(name="industry", type=SearchFieldDataType.String, filterable=True),
@@ -1052,59 +1080,247 @@ This mock document represents a typical 10-K annual report structure with financ
     async def save_session_history(self, session_id: str, message: Dict) -> bool:
         """Save chat session history to CosmosDB"""
         try:
-            if self._use_mock or not self.cosmos_client:
-                logger.info(f"Mock mode or CosmosDB not available - skipping session history save for {session_id}")
+            logger.info(f"Attempting to save session {session_id} - Mock mode: {self._use_mock}, CosmosDB client: {self.cosmos_client is not None}")
+            
+            if self._use_mock:
+                logger.info(f"Mock mode enabled - skipping session history save for {session_id}")
                 return True
+                
+            if not self.cosmos_client:
+                logger.warning(f"CosmosDB client not available - skipping session history save for {session_id}")
+                logger.warning(f"CosmosDB endpoint configured: {getattr(settings, 'azure_cosmos_endpoint', 'NOT_SET')}")
+                return False
             
             database = self.cosmos_client.get_database_client(settings.azure_cosmos_database_name)
             container = database.get_container_client(settings.azure_cosmos_container_name)
             
             try:
                 session_doc = container.read_item(item=session_id, partition_key=session_id)
+                logger.info(f"Found existing session document for {session_id}")
             except:
+                logger.info(f"Creating new session document for {session_id}")
                 session_doc = {
                     "id": session_id,
                     "messages": [],
                     "created_at": message.get("timestamp"),
-                    "updated_at": message.get("timestamp")
+                    "updated_at": message.get("timestamp"),
+                    "user_id": message.get("user_id", "unknown"),
+                    "mode": message.get("mode", "unknown")
                 }
+            
+            # Update user_id and mode if not set
+            if "user_id" not in session_doc:
+                session_doc["user_id"] = message.get("user_id", "unknown")
+            if "mode" not in session_doc:
+                session_doc["mode"] = message.get("mode", "unknown")
+                
             session_doc["messages"].append(message)
             session_doc["updated_at"] = message.get("timestamp")
             
             container.upsert_item(session_doc)
-            logger.info(f"Session {session_id} updated in CosmosDB")
+            logger.info(f"Successfully saved session {session_id} to CosmosDB with {len(session_doc['messages'])} messages")
             return True
             
         except Exception as e:
-            logger.error(f"Failed to save session history: {e}")
+            logger.error(f"Failed to save session history for {session_id}: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return False
 
     async def get_session_history(self, session_id: str) -> List[Dict]:
         """Retrieve chat session history from CosmosDB"""
+        session_data = await self.get_session_data(session_id)
+        return session_data.get("messages", [])
+
+    async def get_session_data(self, session_id: str) -> Dict:
+        """Retrieve full session data (messages + metadata) from CosmosDB"""
         try:
             if self._use_mock or not self.cosmos_client:
-                logger.info(f"Mock mode or CosmosDB not available - returning empty history for {session_id}")
+                logger.info(f"Mock mode or CosmosDB not available - returning empty data for {session_id}")
+                return {"messages": [], "mode": "fast-rag", "created_at": None, "updated_at": None}
+            
+            database = self.cosmos_client.get_database_client(settings.azure_cosmos_database_name)
+            container = database.get_container_client(settings.azure_cosmos_container_name)
+            
+            try:
+                logger.info(f"Attempting to retrieve session {session_id} from CosmosDB")
+                logger.info(f"Database: {settings.azure_cosmos_database_name}, Container: {settings.azure_cosmos_container_name}")
+                logger.info(f"Using partition key: {session_id}")
+                
+                # First, let's try to query for the document to see if it exists
+                query_results = container.query_items(
+                    query="SELECT * FROM c WHERE c.id = @session_id",
+                    parameters=[{"name": "@session_id", "value": session_id}],
+                    enable_cross_partition_query=True
+                )
+                
+                documents = []
+                for doc in query_results:
+                    documents.append(doc)
+                
+                if documents:
+                    logger.info(f"Found session document via query: {len(documents)} documents")
+                    session_doc = documents[0]
+                    logger.info(f"Document structure: id={session_doc.get('id')}, user_id={session_doc.get('user_id')}, messages_count={len(session_doc.get('messages', []))}, mode={session_doc.get('mode', 'unknown')}")
+                    return session_doc
+                else:
+                    logger.warning(f"No documents found for session_id {session_id} via query")
+                    return {"messages": [], "mode": "fast-rag", "created_at": None, "updated_at": None}
+                
+            except Exception as e:
+                # Session doesn't exist yet, return empty data
+                if "NotFound" in str(e) or "does not exist" in str(e) or "404" in str(e):
+                    logger.info(f"Session {session_id} not found, returning empty data")
+                    # Let's also check if any sessions exist at all
+                    try:
+                        query_results = container.query_items(
+                            query="SELECT c.id FROM c",
+                            max_item_count=5,
+                            enable_cross_partition_query=True
+                        )
+                        existing_sessions = []
+                        for item in query_results:
+                            existing_sessions.append(item.get('id'))
+                            if len(existing_sessions) >= 5:
+                                break
+                        logger.info(f"Sample existing session IDs in database: {existing_sessions}")
+                    except Exception as query_e:
+                        logger.warning(f"Could not query existing sessions: {query_e}")
+                    return {"messages": [], "mode": "fast-rag", "created_at": None, "updated_at": None}
+                else:
+                    # Some other error occurred
+                    logger.error(f"Failed to retrieve session data: {e}")
+                    return {"messages": [], "mode": "fast-rag", "created_at": None, "updated_at": None}
+        except Exception as e:
+            logger.error(f"Failed to retrieve session data: {e}")
+            return {"messages": [], "mode": "fast-rag", "created_at": None, "updated_at": None}
+
+    async def list_user_sessions(self, user_id: str, limit: int = 50, offset: int = 0, mode_filter: str = None) -> List[Dict]:
+        """List sessions for a specific user from CosmosDB"""
+        try:
+            if self._use_mock or not self.cosmos_client:
+                logger.info(f"Mock mode or CosmosDB not available - returning empty sessions list for user {user_id}")
                 return []
             
             database = self.cosmos_client.get_database_client(settings.azure_cosmos_database_name)
             container = database.get_container_client(settings.azure_cosmos_container_name)
             
-            try:
-                session_doc = container.read_item(item=session_id, partition_key=session_id)
-                return session_doc.get("messages", [])
-            except Exception as e:
-                # Session doesn't exist yet, return empty history
-                if "NotFound" in str(e) or "does not exist" in str(e):
-                    logger.info(f"Session {session_id} not found, returning empty history")
-                    return []
-                else:
-                    # Some other error occurred
-                    logger.error(f"Failed to retrieve session history: {e}")
-                    return []
+            # Build query to find sessions for this user
+            query = "SELECT * FROM c WHERE c.user_id = @user_id ORDER BY c.updated_at DESC"
+            parameters = [{"name": "@user_id", "value": user_id}]
+            
+            if mode_filter:
+                query = "SELECT * FROM c WHERE c.user_id = @user_id AND c.mode = @mode ORDER BY c.updated_at DESC"
+                parameters.append({"name": "@mode", "value": mode_filter})
+            
+            # Execute query with pagination
+            query_results = container.query_items(
+                query=query,
+                parameters=parameters,
+                max_item_count=limit,
+                enable_cross_partition_query=True
+            )
+            
+            sessions = []
+            count = 0
+            skip_count = 0
+            
+            for item in query_results:
+                if skip_count < offset:
+                    skip_count += 1
+                    continue
+                    
+                if count >= limit:
+                    break
+                
+                # Extract session metadata
+                messages = item.get("messages", [])
+                session_summary = {
+                    "session_id": item.get("id", ""),
+                    "created_at": item.get("created_at", ""),
+                    "updated_at": item.get("updated_at", ""),
+                    "message_count": len(messages),
+                    "mode": self._extract_mode_from_messages(messages),
+                    "last_user_message": self._get_last_user_message(messages),
+                    "total_tokens": self._calculate_total_tokens(messages),
+                    "session_title": self._generate_session_title(messages)
+                }
+                sessions.append(session_summary)
+                count += 1
+            
+            logger.info(f"Retrieved {len(sessions)} sessions for user {user_id}")
+            return sessions
+            
         except Exception as e:
-            logger.error(f"Failed to retrieve session history: {e}")
+            logger.error(f"Failed to list user sessions: {e}")
             return []
 
+    async def get_conversation_context(self, session_id: str, limit: int = 10) -> List[Dict]:
+        """Get recent conversation context for maintaining continuity"""
+        try:
+            messages = await self.get_session_history(session_id)
+            if not messages:
+                return []
+            
+            # Return last 'limit' messages for context (alternating user/assistant pairs)
+            context_messages = messages[-limit:] if len(messages) > limit else messages
+            
+            # Format for conversation context
+            formatted_context = []
+            for msg in context_messages:
+                if msg.get("role") in ["user", "assistant"]:
+                    formatted_context.append({
+                        "role": msg.get("role"),
+                        "content": msg.get("content", ""),
+                        "timestamp": msg.get("timestamp", "")
+                    })
+            
+            return formatted_context
+            
+        except Exception as e:
+            logger.error(f"Failed to get conversation context: {e}")
+            return []
+
+    def _extract_mode_from_messages(self, messages: List[Dict]) -> str:
+        """Extract the RAG mode from message history"""
+        for msg in reversed(messages):
+            mode = msg.get("mode")
+            if mode:
+                return mode
+        return "unknown"
+
+    def _get_last_user_message(self, messages: List[Dict]) -> str:
+        """Get the last user message for session preview"""
+        for msg in reversed(messages):
+            if msg.get("role") == "user":
+                content = msg.get("content", "")
+                return content[:100] + "..." if len(content) > 100 else content
+        return "No messages"
+
+    def _calculate_total_tokens(self, messages: List[Dict]) -> int:
+        """Calculate total tokens used in the session"""
+        total = 0
+        for msg in messages:
+            if msg.get("role") == "assistant":
+                token_usage = msg.get("token_usage", {})
+                total += token_usage.get("total_tokens", 0)
+        return total
+
+    def _generate_session_title(self, messages: List[Dict]) -> str:
+        """Generate a title for the session based on the first user message"""
+        for msg in messages:
+            if msg.get("role") == "user":
+                content = msg.get("content", "")
+                # Take first sentence or first 50 characters
+                if "." in content[:100]:
+                    title = content[:content.index(".", 0, 100) + 1]
+                else:
+                    title = content[:50] + "..." if len(content) > 50 else content
+                return title.strip()
+        return "New Chat"
+
+    # ...existing code...
+    
     @property
     def embedding_client(self):
         """Property to access the embedding client (for status checks)"""

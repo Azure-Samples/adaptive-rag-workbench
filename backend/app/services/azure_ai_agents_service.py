@@ -28,19 +28,33 @@ class AzureAIAgentsService:
             await azure_ai_project_service.initialize()
             
             self.project_client = azure_ai_project_service.get_project_client()
-            self.agents_client = self.project_client.agents
-            logger.info("Azure AI Agents service initialized successfully")
+            
+            # Check if project client was successfully initialized
+            if self.project_client is not None:
+                self.agents_client = self.project_client.agents
+                logger.info("Azure AI Agents service initialized successfully")
+            else:
+                logger.warning("Azure AI Project client not available, Azure AI Agents service will use fallback mode")
+                self.agents_client = None
+                
         except Exception as e:
             logger.error(f"Failed to initialize Azure AI Agents service: {e}")
-            raise
+            logger.info("Azure AI Agents service will operate in fallback mode")
+            self.project_client = None
+            self.agents_client = None
     
     async def process_deep_research(self, 
                                   question: str, 
                                   session_id: str,
                                   tracking_id: Optional[str] = None) -> Dict[str, Any]:
-        """Process deep research using Azure AI Agents"""
+        """Process deep research using Azure AI Agents or fallback to basic research"""
         try:
             logger.info(f"Processing deep research question: {question}")
+            
+            # Check if agents client is available
+            if self.agents_client is None:
+                logger.warning("Azure AI Agents client not available, using fallback research method")
+                return await self._fallback_deep_research(question, session_id, tracking_id)
             
             agent = await self.agents_client.create_agent(
                 model="gpt-4",
