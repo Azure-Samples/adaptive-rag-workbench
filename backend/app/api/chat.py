@@ -5,6 +5,9 @@ from typing import Dict, Any, List, Optional
 import json
 import asyncio
 import uuid
+import time
+import traceback
+import logging
 from datetime import datetime
 from ..agents.orchestrator import OrchestratorAgent
 from ..agents.retriever import RetrieverAgent
@@ -15,6 +18,7 @@ from ..core.globals import initialize_kernel, get_agent_registry
 from ..auth.middleware import get_current_user
 from ..services.agentic_vector_rag_service import agentic_rag_service
 from ..services.azure_ai_agents_service import azure_ai_agents_service
+from ..services.mcp_rag_service import mcp_rag_service
 from ..services.token_usage_tracker import token_tracker
 from ..services.azure_services import get_azure_service_manager
 
@@ -22,7 +26,7 @@ router = APIRouter()
 
 class ChatRequest(BaseModel):
     prompt: str
-    mode: str = "fast-rag"  # fast-rag, agentic-rag, deep-research-rag
+    mode: str = "fast-rag"  # fast-rag, agentic-rag, deep-research-rag, mcp-rag
     verification_level: str = "basic"  # basic, thorough, comprehensive
     conversation_history: Optional[List[Dict[str, str]]] = None
     session_id: Optional[str] = None
@@ -47,7 +51,7 @@ async def chat_stream(request: ChatRequest, current_user: dict = Depends(get_cur
     try:
         session_id = request.session_id or str(uuid.uuid4())
         
-        if request.mode in ["agentic-rag", "fast-rag", "deep-research-rag"]:
+        if request.mode in ["agentic-rag", "fast-rag", "deep-research-rag", "mcp-rag"]:
             return await handle_rag_modes(request, session_id, current_user)
         else:
             return await handle_legacy_modes(request, current_user)
@@ -83,6 +87,8 @@ async def handle_rag_modes(request: ChatRequest, session_id: str, current_user: 
                 )
             elif request.mode == "fast-rag":
                 result = await process_fast_rag(request.prompt, session_id)
+            elif request.mode == "mcp-rag":
+                result = await process_mcp_rag(request.prompt, session_id)
             elif request.mode == "deep-research-rag":
                 result = await process_deep_research_rag(request.prompt, session_id, request.verification_level)
             else:
@@ -90,11 +96,11 @@ async def handle_rag_modes(request: ChatRequest, session_id: str, current_user: 
             
             answer = result.get("answer", "")
             
-            # For agentic responses, send the complete answer at once to preserve markdown formatting
-            if request.mode == "agentic-rag":
+            # For all RAG modes, send the complete answer at once to preserve markdown formatting
+            if request.mode in ["agentic-rag", "mcp-rag", "fast-rag", "deep-research-rag"]:
                 yield f"data: {json.dumps({'type': 'answer_complete', 'answer': answer})}\n\n"
             else:
-                # For other modes, stream word by word
+                # For legacy modes, stream word by word
                 words = answer.split()
                 for i, word in enumerate(words):
                     yield f"data: {json.dumps({'type': 'token', 'token': word + ' ', 'index': i})}\n\n"
@@ -158,6 +164,119 @@ async def handle_legacy_modes(request: ChatRequest, current_user: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+async def _generate_llm_synthesized_answer(question: str, docs: List[Dict[str, Any]], 
+                                         conversation_history: Optional[List[Dict[str, str]]] = None) -> Dict[str, Any]:
+    """
+    Generate an LLM-synthesized answer from retrieved documents.
+    This is a shared helper function for Fast RAG and other modes that need LLM synthesis.
+    
+    Args:
+        question: User question
+        docs: Retrieved documents
+        conversation_history: Previous conversation context
+        
+    Returns:
+        Dictionary with answer and token usage information
+    """
+    try:
+        from ..core.config import settings
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        
+        # Initialize Azure OpenAI client
+        azure_manager = await get_azure_service_manager()
+        openai_client = azure_manager.async_openai_client
+        
+        # Build context from retrieved documents
+        context_parts = []
+        for i, doc in enumerate(docs[:5]):  # Use top 5 documents
+            company = doc.get('company', 'Unknown Company')
+            title = doc.get('title', f'Document {i+1}')
+            content = doc.get('content', '')
+            doc_type = doc.get('document_type', '')
+            filing_date = doc.get('filing_date', '')
+            
+            # Build document context
+            doc_context = f"**Document {i+1}: {title}**\n"
+            if company != 'Unknown Company':
+                doc_context += f"Company: {company}\n"
+            if doc_type:
+                doc_context += f"Document Type: {doc_type}\n"
+            if filing_date:
+                doc_context += f"Filing Date: {filing_date}\n"
+            doc_context += f"Content: {content[:1500]}...\n\n"  # Limit content length
+            
+            context_parts.append(doc_context)
+        
+        # Build conversation context if provided
+        conversation_context = ""
+        if conversation_history:
+            conversation_context = "Previous conversation context:\n"
+            for msg in conversation_history[-3:]:  # Last 3 messages
+                role = msg.get('role', 'user')
+                content = msg.get('content', '')
+                conversation_context += f"{role.title()}: {content[:200]}...\n"
+            conversation_context += "\n"
+        
+        # Build comprehensive prompt
+        system_prompt = """You are a senior financial analyst with expertise in analyzing SEC filings and financial documents. 
+Your task is to provide comprehensive, analytical responses based on the provided document excerpts. 
+
+Guidelines:
+- Provide detailed, analytical insights based on the document content
+- Structure your response with clear sections and headings
+- Use specific data points and quotes from the documents
+- Reference document sources appropriately  
+- Focus on factual information and avoid speculation
+- Use professional financial analysis language
+- If documents contain conflicting information, acknowledge and explain the differences
+- Always cite which documents support your statements"""
+        
+        user_prompt = f"""{conversation_context}Question: {question}
+
+Based on the following financial document excerpts, provide a comprehensive analytical response:
+
+{chr(10).join(context_parts)}
+
+Please provide a detailed analysis that addresses the question using the information from these documents. Structure your response clearly and cite specific information from the documents."""
+        
+        # Generate LLM response
+        logger.info("Calling Azure OpenAI for answer synthesis...")
+        response = await openai_client.chat.completions.create(
+            model=settings.openai_chat_deployment,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.1,  # Low temperature for factual responses
+            max_tokens=1500,
+            top_p=0.9
+        )
+        
+        # Extract response and token usage
+        answer = response.choices[0].message.content
+        usage = response.usage
+        
+        logger.info(f"LLM synthesis completed. Tokens used: {usage.total_tokens}")
+        
+        return {
+            "answer": answer,
+            "prompt_tokens": usage.prompt_tokens,
+            "completion_tokens": usage.completion_tokens,
+            "total_tokens": usage.total_tokens
+        }
+        
+    except Exception as e:
+        logger.error(f"Error generating LLM answer: {str(e)}")
+        # Fallback to simple concatenation
+        return {
+            "answer": f"Based on the retrieved documents: {' '.join([doc.get('content', '')[:200] for doc in docs[:3]])}...",
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+        }
+
 async def process_fast_rag(prompt: str, session_id: str) -> Dict[str, Any]:
     """
     Process Fast RAG mode using hybrid vector search with Azure AI Search.
@@ -165,11 +284,15 @@ async def process_fast_rag(prompt: str, session_id: str) -> Dict[str, Any]:
     This implements the standard RAG pattern with:
     - Hybrid search (text + vector) for enhanced retrieval
     - Semantic ranking for improved relevance
+    - LLM synthesis for coherent answer generation
     - Proper citation tracking with source attribution
     - Score-based filtering for quality control
     """
     try:
         import time
+        import logging
+        
+        logger = logging.getLogger(__name__)
         start_time = time.time()
         
         # Perform hybrid search with the enhanced retriever
@@ -193,93 +316,75 @@ async def process_fast_rag(prompt: str, session_id: str) -> Dict[str, Any]:
                 "success": True
             }
         
-        # Build comprehensive answer with context
-        answer_parts = []
+        # Generate LLM-synthesized answer from retrieved documents
+        logger.info(f"Generating LLM-synthesized answer from {len(docs)} documents")
+        llm_result = await _generate_llm_synthesized_answer(prompt, docs)
+        
+        # Add methodology note to the answer
+        synthesized_answer = llm_result.get("answer", "")
+        synthesized_answer += "\n\n---\n*This response uses hybrid vector search with LLM synthesis for enhanced analysis and relevance.*"
+        
+        # Build citations from retrieved documents
         citations = []
-        
-        # Group documents by company/source for better organization
-        doc_groups = {}
-        for doc in docs:
-            company = doc.get('company', 'Unknown')
-            if company not in doc_groups:
-                doc_groups[company] = []
-            doc_groups[company].append(doc)
-        
-        # Generate structured response
-        answer_parts.append(f"Based on my analysis of {len(docs)} relevant documents, here's what I found:")
-        answer_parts.append("")
-        
         citation_id = 1
-        for company, company_docs in doc_groups.items():
-            if company != 'Unknown':
-                answer_parts.append(f"**{company}:**")
+        for doc in docs:
+            content = doc.get('content', '')
+            title = doc.get('title', f'Document {citation_id}')
             
-            for doc in company_docs:
-                content = doc.get('content', '')
-                title = doc.get('title', f'Document {citation_id}')
-                
-                # Use highlights if available, otherwise use content preview
-                highlights = doc.get('highlights', [])
-                if highlights:
-                    relevant_text = highlights[0][:300]
-                else:
-                    relevant_text = content[:300]
-                
-                if relevant_text:
-                    answer_parts.append(f"• {relevant_text}...")
-                    
-                    # Build comprehensive citation
-                    citation = {
-                        'id': str(citation_id),
-                        'title': title,
-                        'content': relevant_text,
-                        'source': doc.get('source', ''),
-                        'company': doc.get('company', ''),
-                        'document_type': doc.get('document_type', ''),
-                        'filing_date': doc.get('filing_date', ''),
-                        'page_number': doc.get('page_number'),
-                        'section_type': doc.get('section_type', ''),
-                        'document_url': doc.get('document_url', ''),
-                        'search_score': doc.get('search_score', 0.0),
-                        'reranker_score': doc.get('reranker_score'),
-                        'credibility_score': doc.get('credibility_score', 0.0),
-                        'form_type': doc.get('form_type', ''),
-                        'ticker': doc.get('ticker', ''),
-                        'chunk_id': doc.get('chunk_id', ''),
-                        'citation_info': doc.get('citation_info', '')
-                    }
-                    citations.append(citation)
-                    citation_id += 1
+            # Use highlights if available, otherwise use content preview
+            highlights = doc.get('highlights', [])
+            if highlights:
+                relevant_text = highlights[0][:300]
+            else:
+                relevant_text = content[:300]
             
-            answer_parts.append("")
-        
-        # Add methodology note
-        answer_parts.append("---")
-        answer_parts.append("*This response uses hybrid vector search combining text and semantic search for enhanced relevance.*")
+            if relevant_text:
+                # Build comprehensive citation
+                citation = {
+                    'id': str(citation_id),
+                    'title': title,
+                    'content': relevant_text,
+                    'source': doc.get('source', ''),
+                    'company': doc.get('company', ''),
+                    'document_type': doc.get('document_type', ''),
+                    'filing_date': doc.get('filing_date', ''),
+                    'page_number': doc.get('page_number'),
+                    'section_type': doc.get('section_type', ''),
+                    'document_url': doc.get('document_url', ''),
+                    'search_score': doc.get('search_score', 0.0),
+                    'reranker_score': doc.get('reranker_score'),
+                    'credibility_score': doc.get('credibility_score', 0.0),
+                    'form_type': doc.get('form_type', ''),
+                    'ticker': doc.get('ticker', ''),
+                    'chunk_id': doc.get('chunk_id', ''),
+                    'citation_info': doc.get('citation_info', '')
+                }
+                citations.append(citation)
+                citation_id += 1
         
         # Calculate search quality metrics
         avg_score = sum(doc.get('search_score', 0) for doc in docs) / len(docs)
         has_reranker_scores = any(doc.get('reranker_score') for doc in docs)
         
         return {
-            "answer": "\n".join(answer_parts),
+            "answer": synthesized_answer,
             "citations": citations,
             "query_rewrites": [prompt],  # Fast mode doesn't do query rewriting
             "token_usage": {
-                "prompt_tokens": 0,  # Fast RAG doesn't use LLM for generation
-                "completion_tokens": 0,
-                "total_tokens": 0
+                "prompt_tokens": llm_result.get("prompt_tokens", 0),
+                "completion_tokens": llm_result.get("completion_tokens", 0),
+                "total_tokens": llm_result.get("total_tokens", 0)
             },
             "processing_time_ms": processing_time_ms,
             "retrieval_method": "hybrid_vector_search",
             "documents_retrieved": len(docs),
             "average_relevance_score": round(avg_score, 3),
             "semantic_ranking_used": has_reranker_scores,
+            "llm_synthesis_used": True,
             "success": True
         }
         
     except Exception as e:
-        import traceback
         return {
             "answer": f"Error in Fast RAG processing: {str(e)}",
             "citations": [],
@@ -287,6 +392,47 @@ async def process_fast_rag(prompt: str, session_id: str) -> Dict[str, Any]:
             "token_usage": {"total_tokens": 0, "error": str(e)},
             "processing_time_ms": 0,
             "retrieval_method": "hybrid_vector_search",
+            "documents_retrieved": 0,
+            "error_details": traceback.format_exc(),
+            "success": False
+        }
+
+async def process_mcp_rag(prompt: str, session_id: str) -> Dict[str, Any]:
+    """
+    Process MCP RAG mode using Model Context Protocol server for Azure AI Search.
+    
+    This implements RAG pattern with:
+    - MCP server communication for search operations
+    - Hybrid search capabilities via MCP protocol
+    - Proper citation tracking with source attribution
+    - Enhanced error handling and logging
+    """
+    try:
+        import time
+        start_time = time.time()
+        
+        # Ensure MCP service is initialized
+        await mcp_rag_service.ensure_initialized()
+        
+        # Process question using MCP RAG service
+        result = await mcp_rag_service.process_question(
+            question=prompt,
+            session_id=session_id,
+            search_type="hybrid"  # Use hybrid search by default
+        )
+        
+        return result
+        
+    except Exception as e:
+        processing_time_ms = int((time.time() - start_time) * 1000) if 'start_time' in locals() else 0
+        
+        return {
+            "answer": f"Error in MCP RAG processing: {str(e)}",
+            "citations": [],
+            "query_rewrites": [],
+            "token_usage": {"total_tokens": 0, "error": str(e)},
+            "processing_time_ms": processing_time_ms,
+            "retrieval_method": "mcp_hybrid_search",
             "documents_retrieved": 0,
             "error_details": traceback.format_exc(),
             "success": False

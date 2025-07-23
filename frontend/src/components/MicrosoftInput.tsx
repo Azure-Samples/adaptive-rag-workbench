@@ -15,10 +15,11 @@ import {
   Users, 
   Building2,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Network
 } from 'lucide-react';
 
-type RAGMode = 'fast-rag' | 'agentic-rag' | 'deep-research-rag';
+type RAGMode = 'fast-rag' | 'agentic-rag' | 'deep-research-rag' | 'mcp-rag';
 
 interface MicrosoftInputProps {
   query: string;
@@ -109,6 +110,14 @@ export function MicrosoftInput({
       borderColor: theme === 'customer' ? 'border-primary/20' : 'border-primary/20'
     },
     {
+      id: 'mcp-rag' as RAGMode,
+      name: 'MCP',
+      icon: Network,
+      color: theme === 'customer' ? 'text-primary' : 'text-blue-600',
+      bgColor: theme === 'customer' ? 'bg-primary/10' : 'bg-blue-50',
+      borderColor: theme === 'customer' ? 'border-primary/20' : 'border-blue-200'
+    },
+    {
       id: 'deep-research-rag' as RAGMode,
       name: 'Deep Research',
       icon: Microscope,
@@ -140,6 +149,11 @@ export function MicrosoftInput({
         "Compare Microsoft's AI strategy to Google and Amazon",
         "Analyze Microsoft's cloud transformation and competitive positioning",
         "What regulatory challenges is Microsoft facing with AI and how are they addressing them?"
+      ],
+      'mcp-rag': [
+        "What are Microsoft's current cloud revenue figures?",
+        "How did Microsoft perform in Q3 2024 earnings?",
+        "What is Microsoft's current stock price and market cap?"
       ],
       'deep-research-rag': [
         "Comprehensive analysis of Microsoft's AI investments and market positioning in 2024",

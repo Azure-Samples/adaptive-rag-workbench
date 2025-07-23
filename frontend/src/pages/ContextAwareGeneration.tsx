@@ -6,7 +6,7 @@ import { useChatStream } from '../hooks/useChatStream';
 import { useTheme } from '../contexts/ThemeContext';
 import { Sparkles } from 'lucide-react';
 
-type RAGMode = 'fast-rag' | 'agentic-rag' | 'deep-research-rag';
+type RAGMode = 'fast-rag' | 'agentic-rag' | 'deep-research-rag' | 'mcp-rag';
 
 export function ContextAwareGeneration() {
   const { theme } = useTheme();

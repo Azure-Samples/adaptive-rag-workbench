@@ -1,0 +1,2 @@
+Remove-Item Env:AZURE_OPENAI_ENDPOINT
+Remove-Item Env:AZURE_OPENAI_API_KEY

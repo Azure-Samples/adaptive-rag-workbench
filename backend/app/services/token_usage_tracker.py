@@ -29,11 +29,13 @@ class ServiceType(str, Enum):
     FAST_RAG = "fast_rag"
     AGENTIC_RAG = "agentic_rag"
     DEEP_RESEARCH_RAG = "deep_research_rag"
+    MCP_RAG = "mcp_rag"
     SEC_DOCS = "sec_docs"
 
 class OperationType(str, Enum):
     """Operation types for detailed tracking"""
     SEARCH_QUERY = "search_query"
+    SEARCH = "search"
     ANSWER_GENERATION = "answer_generation"
     DOCUMENT_ANALYSIS = "document_analysis"
     CREDIBILITY_CHECK = "credibility_check"
@@ -45,6 +47,7 @@ class OperationType(str, Enum):
     SOURCE_VERIFICATION = "source_verification"
     QUERY_REWRITE = "query_rewrite"
     AGENTIC_RETRIEVAL = "agentic_retrieval"
+    MCP_SEARCH = "mcp_search"
 
 @dataclass
 class TokenUsageRecord:

@@ -6,7 +6,7 @@ import { useChatStream } from '../hooks/useChatStream';
 import { Sparkles } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
-type RAGMode = 'fast-rag' | 'agentic-rag' | 'deep-research-rag';
+type RAGMode = 'fast-rag' | 'agentic-rag' | 'deep-research-rag' | 'mcp-rag';
 
 export function QAWithVerification() {
   const { theme } = useTheme();
