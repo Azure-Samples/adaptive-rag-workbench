@@ -49,7 +49,14 @@ orchestrator.set_agents(
 @router.post("/chat")
 async def chat_stream(request: ChatRequest, current_user: dict = Depends(get_current_user)):
     try:
-        session_id = request.session_id or str(uuid.uuid4())
+        # Only generate session ID if one is provided (for session-enabled modes)
+        # For QA mode without sessions, we'll use None to skip CosmosDB storage
+        session_id = request.session_id
+        if session_id is None:
+            # Generate a temporary ID for internal processing but don't save to DB
+            temp_session_id = str(uuid.uuid4())
+        else:
+            temp_session_id = session_id
         
         if request.mode in ["agentic-rag", "fast-rag", "deep-research-rag", "mcp-rag"]:
             return await handle_rag_modes(request, session_id, current_user)
@@ -59,7 +66,7 @@ async def chat_stream(request: ChatRequest, current_user: dict = Depends(get_cur
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-async def handle_rag_modes(request: ChatRequest, session_id: str, current_user: dict):
+async def handle_rag_modes(request: ChatRequest, session_id: str, current_user: dict, save_to_db: bool = True):
     """Handle the new RAG modes with enhanced features"""
     
     async def generate():
@@ -72,16 +79,26 @@ async def handle_rag_modes(request: ChatRequest, session_id: str, current_user: 
                 "role": "user",
                 "content": request.prompt,
                 "timestamp": datetime.utcnow().isoformat(),
-                "mode": request.mode
+                "mode": request.mode,
+                "user_id": current_user.get('sub', current_user.get('preferred_username', 'unknown'))
             }
-            await azure_service_manager.save_session_history(session_id, user_message)
             
-            yield f"data: {json.dumps({'type': 'metadata', 'session_id': session_id, 'mode': request.mode, 'timestamp': datetime.utcnow().isoformat()})}\n\n"
+            # Only save to CosmosDB if session is enabled
+            if save_to_db:
+                await azure_service_manager.save_session_history(session_id, user_message)
+            
+            # Load conversation history for context (last 5 exchanges) only if session enabled
+            conversation_context = []
+            if save_to_db:
+                conversation_context = await azure_service_manager.get_conversation_context(session_id, limit=10)
+            
+            # Return session_id only if session is enabled
+            yield f"data: {json.dumps({'type': 'metadata', 'session_id': session_id if save_to_db else None, 'mode': request.mode, 'timestamp': datetime.utcnow().isoformat()})}\n\n"
             
             if request.mode == "agentic-rag":
                 result = await agentic_rag_service.process_question(
                     question=request.prompt,
-                    conversation_history=request.conversation_history,
+                    conversation_history=conversation_context or request.conversation_history,
                     rag_mode=request.mode,
                     session_id=session_id
                 )
@@ -90,7 +107,7 @@ async def handle_rag_modes(request: ChatRequest, session_id: str, current_user: 
             elif request.mode == "mcp-rag":
                 result = await process_mcp_rag(request.prompt, session_id)
             elif request.mode == "deep-research-rag":
-                result = await process_deep_research_rag(request.prompt, session_id, request.verification_level)
+                result = await process_deep_research_rag(request.prompt, session_id, request.verification_level, conversation_context)
             else:
                 raise ValueError(f"Unsupported RAG mode: {request.mode}")
             
@@ -134,13 +151,20 @@ async def handle_rag_modes(request: ChatRequest, session_id: str, current_user: 
                 "content": answer,
                 "timestamp": datetime.utcnow().isoformat(),
                 "citations": citations,
+                "query_rewrites": query_rewrites,
                 "token_usage": token_usage,
                 "tracing_info": tracing_info,
-                "processing_metadata": processing_metadata
+                "processing_metadata": processing_metadata,
+                "mode": request.mode,
+                "user_id": current_user.get('sub', current_user.get('preferred_username', 'unknown'))
             }
-            await azure_service_manager.save_session_history(session_id, assistant_message)
             
-            yield f"data: {json.dumps({'type': 'done', 'session_id': session_id})}\n\n"
+            # Only save to CosmosDB if session is enabled
+            if save_to_db:
+                await azure_service_manager.save_session_history(session_id, assistant_message)
+            
+            # Return session_id only if session is enabled
+            yield f"data: {json.dumps({'type': 'done', 'session_id': session_id if save_to_db else None})}\n\n"
             
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
@@ -287,6 +311,7 @@ async def process_fast_rag(prompt: str, session_id: str) -> Dict[str, Any]:
     - LLM synthesis for coherent answer generation
     - Proper citation tracking with source attribution
     - Score-based filtering for quality control
+    - Conversation context awareness for follow-up questions
     """
     try:
         import time
@@ -295,9 +320,38 @@ async def process_fast_rag(prompt: str, session_id: str) -> Dict[str, Any]:
         logger = logging.getLogger(__name__)
         start_time = time.time()
         
+        # Enhance search query with conversation context if available
+        enhanced_prompt = prompt
+        if conversation_context and len(conversation_context) > 0:
+            # Get the last few messages for context
+            recent_context = conversation_context[-4:]  # Last 2 exchanges
+            context_parts = []
+            
+            for msg in recent_context:
+                if msg.get('role') == 'user':
+                    context_parts.append(f"Previous question: {msg.get('content', '')}")
+                elif msg.get('role') == 'assistant':
+                    # Extract key topics from the assistant's response
+                    content = msg.get('content', '')
+                    if 'MICROSOFT' in content.upper():
+                        context_parts.append("Context: Microsoft")
+                    elif 'APPLE' in content.upper():
+                        context_parts.append("Context: Apple")
+                    elif 'GOOGLE' in content.upper() or 'ALPHABET' in content.upper():
+                        context_parts.append("Context: Google/Alphabet")
+                    elif 'AMAZON' in content.upper():
+                        context_parts.append("Context: Amazon")
+                    elif 'META' in content.upper():
+                        context_parts.append("Context: Meta")
+                    elif 'TESLA' in content.upper():
+                        context_parts.append("Context: Tesla")
+            
+            if context_parts:
+                enhanced_prompt = f"{' '.join(context_parts)} - {prompt}"
+        
         # Perform hybrid search with the enhanced retriever
         docs = await retriever.invoke(
-            query=prompt,
+            query=enhanced_prompt,
             filters=None,  # No automatic filters - let hybrid search handle relevance
             top_k=5  # Limit to top 5 for fast mode
         )
@@ -483,11 +537,18 @@ async def process_deep_research_rag(prompt: str, session_id: str, verification_l
 
 @router.get("/chat/sessions/{session_id}/history")
 async def get_session_history(session_id: str, current_user: dict = Depends(get_current_user)):
-    """Get chat session history"""
+    """Get chat session history with metadata"""
     try:
         azure_service_manager = await get_azure_service_manager()
-        history = await azure_service_manager.get_session_history(session_id)
-        return {"session_id": session_id, "messages": history}
+        session_data = await azure_service_manager.get_session_data(session_id)
+        return {
+            "session_id": session_id, 
+            "messages": session_data.get("messages", []),
+            "mode": session_data.get("mode", "fast-rag"),
+            "created_at": session_data.get("created_at"),
+            "updated_at": session_data.get("updated_at"),
+            "user_id": session_data.get("user_id")
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -507,10 +568,31 @@ async def clear_session_history(session_id: str, current_user: dict = Depends(ge
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/chat/sessions")
-async def list_user_sessions(current_user: dict = Depends(get_current_user)):
-    """List all sessions for the current user (placeholder implementation)"""
+async def list_user_sessions(
+    current_user: dict = Depends(get_current_user),
+    limit: int = 50,
+    offset: int = 0,
+    mode: Optional[str] = None
+):
+    """List all sessions for the current user"""
     try:
-        return {"sessions": [], "message": "Session listing not yet implemented"}
+        azure_service_manager = await get_azure_service_manager()
+        user_id = current_user.get('sub', current_user.get('preferred_username', 'unknown'))
+        
+        sessions = await azure_service_manager.list_user_sessions(
+            user_id=user_id,
+            limit=limit,
+            offset=offset,
+            mode_filter=mode
+        )
+        
+        return {
+            "sessions": sessions,
+            "total": len(sessions),
+            "limit": limit,
+            "offset": offset,
+            "user_id": user_id
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

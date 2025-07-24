@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { MessageSquare, BarChart3, List, ExternalLink, Eye, Plus, RefreshCw } from 'lucide-react';
+import { MessageSquare, BarChart3, List, ExternalLink, Eye, Plus, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '../auth/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -38,6 +38,12 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  // Metadata for assistant messages
+  citations?: Citation[];
+  queryRewrites?: string[];
+  tokenUsage?: TokenUsage;
+  processingMetadata?: ProcessingMetadata;
+  tracingInfo?: TracingInfo;
 }
 
 interface TracingInfo {
@@ -51,8 +57,8 @@ interface TracingInfo {
 
 interface PerplexityAnswerDisplayProps {
   messages: Message[];
-  citations: Citation[];
-  queryRewrites: string[];
+  citations: Citation[]; // Keep for backward compatibility
+  queryRewrites: string[]; // Keep for backward compatibility
   tokenUsage?: TokenUsage;
   processingMetadata?: ProcessingMetadata;
   tracingInfo?: TracingInfo;
@@ -61,6 +67,192 @@ interface PerplexityAnswerDisplayProps {
   sessionId?: string;
   onSendMessage?: (message: string) => void;
   onStartNewSession?: () => void;
+}
+
+// Component for displaying message-specific metadata (sources, steps, tokens)
+// Only shows when session functionality is available (Context-Aware Generation)
+function MessageMetadata({ 
+  message, 
+  theme, 
+  ragMode, 
+  onViewCitation,
+  showMetadata = true
+}: { 
+  message: Message; 
+  theme: string; 
+  ragMode: string; 
+  onViewCitation: (citation: Citation) => void;
+  showMetadata?: boolean;
+}) {
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
+
+  // Don't show metadata if disabled or no session features
+  if (!showMetadata) {
+    return null;
+  }
+
+  const hasCitations = message.citations && message.citations.length > 0;
+  const hasSteps = message.queryRewrites && message.queryRewrites.length > 0;
+  const hasTokens = message.tokenUsage;
+
+  if (!hasCitations && !hasSteps && !hasTokens) {
+    return null;
+  }
+
+  const toggleSection = (section: string) => {
+    setExpandedSection(expandedSection === section ? null : section);
+  };
+
+  return (
+    <div className="mt-4 space-y-2">
+      {/* Sources */}
+      {hasCitations && (
+        <div className={`border rounded-lg ${
+          theme === 'dark' ? 'border-gray-600' : 'border-gray-200'
+        }`}>
+          <button
+            onClick={() => toggleSection('sources')}
+            className={`w-full flex items-center justify-between p-3 text-left hover:bg-gray-50 ${
+              theme === 'dark' ? 'hover:bg-gray-700' : ''
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <ExternalLink className="h-4 w-4" />
+              <span className="text-sm font-medium">Sources ({message.citations!.length})</span>
+            </div>
+            {expandedSection === 'sources' ? 
+              <ChevronUp className="h-4 w-4" /> : 
+              <ChevronDown className="h-4 w-4" />
+            }
+          </button>
+          {expandedSection === 'sources' && (
+            <div className="px-3 pb-3 space-y-2">
+              {message.citations!.map((citation, idx) => (
+                <div key={citation.id} className={`p-3 rounded ${
+                  theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <div className="w-5 h-5 bg-gray-200 rounded-full flex items-center justify-center text-xs font-medium">
+                      {idx + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-sm truncate">{citation.title}</h4>
+                      <p className="text-xs text-gray-600 line-clamp-2 mt-1">{citation.content}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs h-6"
+                          onClick={() => onViewCitation(citation)}
+                        >
+                          <Eye className="h-3 w-3 mr-1" />
+                          View
+                        </Button>
+                        {citation.score && (
+                          <Badge variant="outline" className="text-xs">
+                            {citation.score.toFixed(2)}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Steps */}
+      {hasSteps && (
+        <div className={`border rounded-lg ${
+          theme === 'dark' ? 'border-gray-600' : 'border-gray-200'
+        }`}>
+          <button
+            onClick={() => toggleSection('steps')}
+            className={`w-full flex items-center justify-between p-3 text-left hover:bg-gray-50 ${
+              theme === 'dark' ? 'hover:bg-gray-700' : ''
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <List className="h-4 w-4" />
+              <span className="text-sm font-medium">Processing Steps ({ragMode.toUpperCase()})</span>
+            </div>
+            {expandedSection === 'steps' ? 
+              <ChevronUp className="h-4 w-4" /> : 
+              <ChevronDown className="h-4 w-4" />
+            }
+          </button>
+          {expandedSection === 'steps' && (
+            <div className="px-3 pb-3 space-y-2">
+              {message.queryRewrites!.map((rewrite, idx) => (
+                <div key={idx} className="flex items-start gap-3">
+                  <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center text-xs font-medium text-primary">
+                    {idx + 1}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">
+                      {idx === 0 ? 'Original Query' : `Query Rewrite ${idx}`}
+                    </p>
+                    <p className="text-xs text-gray-600">{rewrite}</p>
+                  </div>
+                </div>
+              ))}
+              {message.processingMetadata && (
+                <div className="mt-3 pt-3 border-t text-xs text-gray-500">
+                  Processing: {message.processingMetadata.processing_time_ms}ms • {message.processingMetadata.retrieval_method}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Token Usage */}
+      {hasTokens && (
+        <div className={`border rounded-lg ${
+          theme === 'dark' ? 'border-gray-600' : 'border-gray-200'
+        }`}>
+          <button
+            onClick={() => toggleSection('tokens')}
+            className={`w-full flex items-center justify-between p-3 text-left hover:bg-gray-50 ${
+              theme === 'dark' ? 'hover:bg-gray-700' : ''
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              <span className="text-sm font-medium">Token Usage ({message.tokenUsage!.total_tokens} total)</span>
+            </div>
+            {expandedSection === 'tokens' ? 
+              <ChevronUp className="h-4 w-4" /> : 
+              <ChevronDown className="h-4 w-4" />
+            }
+          </button>
+          {expandedSection === 'tokens' && (
+            <div className="px-3 pb-3">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2 bg-primary/10 rounded">
+                  <div className="text-sm font-bold text-primary">{message.tokenUsage!.prompt_tokens}</div>
+                  <div className="text-xs text-gray-600">Prompt</div>
+                </div>
+                <div className="p-2 bg-green-50 rounded">
+                  <div className="text-sm font-bold text-green-600">{message.tokenUsage!.completion_tokens}</div>
+                  <div className="text-xs text-gray-600">Response</div>
+                </div>
+                <div className="p-2 bg-purple-50 rounded">
+                  <div className="text-sm font-bold text-purple-600">{message.tokenUsage!.total_tokens}</div>
+                  <div className="text-xs text-gray-600">Total</div>
+                </div>
+              </div>
+              <div className="mt-2 text-xs text-gray-500 text-center">
+                Cost: ${((message.tokenUsage!.prompt_tokens * 0.0001) + (message.tokenUsage!.completion_tokens * 0.0002)).toFixed(4)}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function MicrosoftAnswerDisplay({
@@ -89,12 +281,35 @@ export function MicrosoftAnswerDisplay({
     setShowCitationModal(true);
   };
 
-  const assistantMessage = messages.find(msg => msg.role === 'assistant');
-  const userMessage = messages.find(msg => msg.role === 'user');
-  const answer = assistantMessage?.content || '';
+  // Get the most recent messages for follow-up questions and other metadata
+  const latestAssistantMessage = messages.filter(msg => msg.role === 'assistant').pop();
+  const latestUserMessage = messages.filter(msg => msg.role === 'user').pop();
+  const answer = latestAssistantMessage?.content || '';
+
+  // Aggregate all citations, query rewrites from all assistant messages for global tabs
+  const allCitations = messages
+    .filter(msg => msg.role === 'assistant' && msg.citations)
+    .flatMap(msg => msg.citations || []);
+  
+  const allQueryRewrites = messages
+    .filter(msg => msg.role === 'assistant' && msg.queryRewrites)
+    .flatMap(msg => msg.queryRewrites || []);
+
+  // Use latest message metadata for global token usage and processing info
+  // Fall back to passed props for backward compatibility
+  const globalTokenUsage = latestAssistantMessage?.tokenUsage || tokenUsage;
+  const globalProcessingMetadata = latestAssistantMessage?.processingMetadata || processingMetadata;
+  const globalTracingInfo = latestAssistantMessage?.tracingInfo || tracingInfo;
+
+  // Use aggregated data for global tabs, fall back to passed props if no message metadata
+  const displayCitations = allCitations.length > 0 ? allCitations : citations;
+  const displayQueryRewrites = allQueryRewrites.length > 0 ? allQueryRewrites : queryRewrites;
+
+  // Determine if session features should be shown (Context-Aware Generation only)
+  const hasSessionFeatures = !!(sessionId && onSendMessage && onStartNewSession);
 
   const generateFollowUpQuestions = async () => {
-    if (!answer || !userMessage?.content || !sessionId) return;
+    if (!answer || !latestUserMessage?.content || !sessionId || !onSendMessage) return;
     
     setIsLoadingFollowUp(true);
     try {
@@ -111,7 +326,7 @@ export function MicrosoftAnswerDisplay({
         method: 'POST',
         headers,
         body: JSON.stringify({
-          original_question: userMessage.content,
+          original_question: latestUserMessage.content,
           answer: answer,
           session_id: sessionId
         }),
@@ -129,10 +344,10 @@ export function MicrosoftAnswerDisplay({
   };
 
   useEffect(() => {
-    if (answer && !isStreaming && userMessage?.content) {
+    if (answer && !isStreaming && latestUserMessage?.content && sessionId && onSendMessage) {
       generateFollowUpQuestions();
     }
-  }, [answer, isStreaming, userMessage?.content, sessionId]);
+  }, [answer, isStreaming, latestUserMessage?.content, sessionId, onSendMessage]);
 
   const handleFollowUpClick = (question: string) => {
     if (onSendMessage) {
@@ -181,7 +396,8 @@ export function MicrosoftAnswerDisplay({
               : 'text-gray-700 hover:text-gray-900 data-[state=active]:bg-white data-[state=active]:text-gray-900'
         }`}>
           <ExternalLink className="h-4 w-4" />
-          Sources {citations && citations.length > 0 && `• ${citations.length}`}
+          Sources {displayCitations && displayCitations.length > 0 && `• ${displayCitations.length}`}
+          {hasSessionFeatures && <span className="text-xs opacity-60">(Global)</span>}
         </TabsTrigger>
         <TabsTrigger value="steps" className={`flex items-center gap-2 ${
           theme === 'dark' 
@@ -192,6 +408,7 @@ export function MicrosoftAnswerDisplay({
         }`}>
           <List className="h-4 w-4" />
           Steps
+          {hasSessionFeatures && <span className="text-xs opacity-60">(Global)</span>}
         </TabsTrigger>
         <TabsTrigger value="tokens" className={`flex items-center gap-2 ${
           theme === 'dark' 
@@ -202,6 +419,7 @@ export function MicrosoftAnswerDisplay({
         }`}>
           <BarChart3 className="h-4 w-4" />
           Token Usage
+          {hasSessionFeatures && <span className="text-xs opacity-60">(Global)</span>}
         </TabsTrigger>
       </TabsList>
 
@@ -213,7 +431,25 @@ export function MicrosoftAnswerDisplay({
               ? 'bg-customer-50 border-customer-200' 
               : 'bg-white border-gray-200'
         }`}>
-          {isStreaming && !answer && (
+          {/* Mode Indicator - Show if this is Context-Aware Generation with session features */}
+          {hasSessionFeatures && (
+            <div className={`mb-4 p-3 rounded-lg border-l-4 ${
+              theme === 'dark'
+                ? 'bg-blue-900/20 border-blue-400 text-blue-300'
+                : theme === 'customer'
+                  ? 'bg-customer-50 border-customer-400 text-customer-800'
+                  : 'bg-blue-50 border-blue-400 text-blue-800'
+            }`}>
+              <div className="flex items-center gap-2 text-sm">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="font-medium">Session Active</span>
+                <span className="text-xs opacity-75">- Conversation history and metadata tracking enabled</span>
+              </div>
+            </div>
+          )}
+
+          {/* Show entire conversation history */}
+          {messages.length === 0 && isStreaming && (
             <div className="flex items-center space-x-3">
               <div className={`animate-spin rounded-full h-4 w-4 border-2 border-t-transparent ${
                 theme === 'dark' 
@@ -231,22 +467,66 @@ export function MicrosoftAnswerDisplay({
               }`}>Generating response...</span>
             </div>
           )}
-          {answer && (
-            <div className="markdown-content">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {answer}
-              </ReactMarkdown>
-              {isStreaming && (
-                <div className="mt-4 flex items-center space-x-3">
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-500 border-t-transparent"></div>
-                  <span className="text-sm text-gray-600">Processing...</span>
+          
+          {/* Render all messages in chronological order */}
+          {messages.map((message, index) => (
+            <div key={index} className={`mb-6 ${index > 0 ? 'pt-6 border-t border-gray-200' : ''}`}>
+              <div className={`flex items-center gap-2 mb-3 ${
+                message.role === 'user' 
+                  ? 'text-blue-600' 
+                  : theme === 'dark' 
+                    ? 'text-green-400' 
+                    : theme === 'customer' 
+                      ? 'text-customer-600' 
+                      : 'text-green-600'
+              }`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                  message.role === 'user' 
+                    ? 'bg-blue-100 text-blue-600' 
+                    : theme === 'dark' 
+                      ? 'bg-green-900 text-green-400' 
+                      : theme === 'customer' 
+                        ? 'bg-customer-100 text-customer-600' 
+                        : 'bg-green-100 text-green-600'
+                }`}>
+                  {message.role === 'user' ? 'U' : 'A'}
                 </div>
-              )}
+                <span className="font-medium capitalize">{message.role}</span>
+                <span className="text-xs text-gray-500">
+                  {message.timestamp.toLocaleTimeString()}
+                </span>
+              </div>
+              <div className="ml-8">
+                <div className="markdown-content">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {message.content}
+                  </ReactMarkdown>
+                </div>
+                
+                {/* Message-specific metadata for assistant messages - Only in Context-Aware Generation */}
+                {message.role === 'assistant' && hasSessionFeatures && (
+                  <MessageMetadata
+                    message={message}
+                    theme={theme}
+                    ragMode={ragMode}
+                    onViewCitation={handleViewCitation}
+                    showMetadata={hasSessionFeatures}
+                  />
+                )}
+              </div>
+            </div>
+          ))}
+
+          {/* Show streaming indicator for the latest message */}
+          {isStreaming && messages.length > 0 && (
+            <div className="mt-4 ml-8 flex items-center space-x-3">
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-500 border-t-transparent"></div>
+              <span className="text-sm text-gray-600">Processing...</span>
             </div>
           )}
           
-          {/* Follow-up Questions Section */}
-          {answer && !isStreaming && (
+          {/* Follow-up Questions Section - Only show when session functionality is available */}
+          {messages.length > 0 && !isStreaming && hasSessionFeatures && (
             <div className="mt-6 pt-6 border-t border-gray-200">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium text-gray-900">Continue the conversation</h3>
@@ -312,8 +592,8 @@ export function MicrosoftAnswerDisplay({
           {/* Token Usage Footer */}
           {!isStreaming && (
             <TokenUsageFooter
-              tokenUsage={tokenUsage}
-              processingMetadata={processingMetadata}
+              tokenUsage={globalTokenUsage}
+              processingMetadata={globalProcessingMetadata}
               onViewRunInfo={() => setShowTracingModal(true)}
               theme={theme}
             />
@@ -323,12 +603,26 @@ export function MicrosoftAnswerDisplay({
 
       <TabsContent value="sources" className="mt-6">
         <div className="space-y-4">
-          {!citations || citations.length === 0 ? (
+          {!hasSessionFeatures && displayCitations && displayCitations.length > 0 && (
+            <div className={`p-3 rounded-lg ${
+              theme === 'dark'
+                ? 'bg-gray-800 border border-gray-700 text-gray-300'
+                : theme === 'customer'
+                  ? 'bg-customer-50 border border-customer-200 text-customer-700'
+                  : 'bg-blue-50 border border-blue-200 text-blue-700'
+            }`}>
+              <p className="text-sm">
+                <strong>QA with Verification Mode:</strong> Showing sources from the latest query. 
+                For conversation history and per-message sources, use Context-Aware Generation.
+              </p>
+            </div>
+          )}
+          {!displayCitations || displayCitations.length === 0 ? (
             <Card className="p-6 text-center text-gray-500">
               No sources available yet
             </Card>
           ) : (
-            citations?.map((citation, idx) => (
+            displayCitations?.map((citation, idx) => (
               <Card key={citation.id} className="p-4">
                 <div className="flex items-start gap-3">
                   <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium">
@@ -382,7 +676,21 @@ export function MicrosoftAnswerDisplay({
 
       <TabsContent value="steps" className="mt-6">
         <Card className="p-6">
-          {queryRewrites.length === 0 ? (
+          {!hasSessionFeatures && displayQueryRewrites.length > 0 && (
+            <div className={`mb-4 p-3 rounded-lg ${
+              theme === 'dark'
+                ? 'bg-gray-800 border border-gray-700 text-gray-300'
+                : theme === 'customer'
+                  ? 'bg-customer-50 border border-customer-200 text-customer-700'
+                  : 'bg-blue-50 border border-blue-200 text-blue-700'
+            }`}>
+              <p className="text-sm">
+                <strong>QA with Verification Mode:</strong> Showing processing steps from the latest query.
+                For complete conversation workflow, use Context-Aware Generation.
+              </p>
+            </div>
+          )}
+          {displayQueryRewrites.length === 0 ? (
             <div className="text-center text-gray-500">
               No query rewrites available
             </div>
@@ -402,11 +710,11 @@ export function MicrosoftAnswerDisplay({
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">Original Query</p>
-                    <p className="text-sm text-gray-600">{queryRewrites[0] || 'Processing...'}</p>
+                    <p className="text-sm text-gray-600">{displayQueryRewrites[0] || 'Processing...'}</p>
                   </div>
                 </div>
 
-                {ragMode === 'agentic-rag' && queryRewrites.length > 1 && (
+                {ragMode === 'agentic-rag' && displayQueryRewrites.length > 1 && (
                   <>
                     <div className="flex items-start gap-3">
                       <div className="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center text-xs font-medium text-purple-600">
@@ -418,7 +726,7 @@ export function MicrosoftAnswerDisplay({
                       </div>
                     </div>
 
-                    {queryRewrites.slice(1).map((rewrite, idx) => (
+                    {displayQueryRewrites.slice(1).map((rewrite, idx) => (
                       <div key={idx} className="flex items-start gap-3">
                         <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center text-xs font-medium text-green-600">
                           {idx + 3}
@@ -435,7 +743,7 @@ export function MicrosoftAnswerDisplay({
                 {ragMode === 'deep-research-rag' && (
                   <div className="flex items-start gap-3">
                     <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center text-xs font-medium text-orange-600">
-                      {queryRewrites.length + 1}
+                      {displayQueryRewrites.length + 1}
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900">Verification Phase</p>
@@ -455,16 +763,16 @@ export function MicrosoftAnswerDisplay({
                 </div>
               </div>
 
-              {processingMetadata && (
+              {globalProcessingMetadata && (
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="font-medium text-gray-700">Processing Time:</span>
-                      <span className="ml-2 text-gray-600">{processingMetadata.processing_time_ms}ms</span>
+                      <span className="ml-2 text-gray-600">{globalProcessingMetadata.processing_time_ms}ms</span>
                     </div>
                     <div>
                       <span className="font-medium text-gray-700">Method:</span>
-                      <span className="ml-2 text-gray-600">{processingMetadata.retrieval_method}</span>
+                      <span className="ml-2 text-gray-600">{globalProcessingMetadata.retrieval_method}</span>
                     </div>
                   </div>
                 </div>
@@ -476,7 +784,21 @@ export function MicrosoftAnswerDisplay({
 
       <TabsContent value="tokens" className="mt-6">
         <Card className="p-6">
-          {!tokenUsage ? (
+          {!hasSessionFeatures && globalTokenUsage && (
+            <div className={`mb-4 p-3 rounded-lg ${
+              theme === 'dark'
+                ? 'bg-gray-800 border border-gray-700 text-gray-300'
+                : theme === 'customer'
+                  ? 'bg-customer-50 border border-customer-200 text-customer-700'
+                  : 'bg-blue-50 border border-blue-200 text-blue-700'
+            }`}>
+              <p className="text-sm">
+                <strong>QA with Verification Mode:</strong> Showing token usage from the latest query.
+                For session-wide analytics, use Context-Aware Generation.
+              </p>
+            </div>
+          )}
+          {!globalTokenUsage ? (
             <div className="text-center text-gray-500">
               No token usage data available
             </div>
@@ -486,15 +808,15 @@ export function MicrosoftAnswerDisplay({
               
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center p-4 bg-primary/10 rounded-lg">
-                  <div className="text-2xl font-bold text-primary">{tokenUsage.prompt_tokens}</div>
+                  <div className="text-2xl font-bold text-primary">{globalTokenUsage.prompt_tokens}</div>
                   <div className="text-sm text-gray-600">Prompt Tokens</div>
                 </div>
                 <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <div className="text-2xl font-bold text-green-600">{tokenUsage.completion_tokens}</div>
+                  <div className="text-2xl font-bold text-green-600">{globalTokenUsage.completion_tokens}</div>
                   <div className="text-sm text-gray-600">Completion Tokens</div>
                 </div>
                 <div className="text-center p-4 bg-purple-50 rounded-lg">
-                  <div className="text-2xl font-bold text-purple-600">{tokenUsage.total_tokens}</div>
+                  <div className="text-2xl font-bold text-purple-600">{globalTokenUsage.total_tokens}</div>
                   <div className="text-sm text-gray-600">Total Tokens</div>
                 </div>
               </div>
@@ -504,28 +826,28 @@ export function MicrosoftAnswerDisplay({
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Input Cost:</span>
-                    <span className="font-medium">${(tokenUsage.prompt_tokens * 0.0001).toFixed(4)}</span>
+                    <span className="font-medium">${(globalTokenUsage.prompt_tokens * 0.0001).toFixed(4)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Output Cost:</span>
-                    <span className="font-medium">${(tokenUsage.completion_tokens * 0.0002).toFixed(4)}</span>
+                    <span className="font-medium">${(globalTokenUsage.completion_tokens * 0.0002).toFixed(4)}</span>
                   </div>
                   <div className="flex justify-between border-t pt-2">
                     <span className="font-medium text-gray-900">Total Cost:</span>
-                    <span className="font-bold">${((tokenUsage.prompt_tokens * 0.0001) + (tokenUsage.completion_tokens * 0.0002)).toFixed(4)}</span>
+                    <span className="font-bold">${((globalTokenUsage.prompt_tokens * 0.0001) + (globalTokenUsage.completion_tokens * 0.0002)).toFixed(4)}</span>
                   </div>
                 </div>
               </div>
 
-              {processingMetadata && (
+              {globalProcessingMetadata && (
                 <div className="mt-6 p-4 bg-gray-50 rounded-lg">
                   <h4 className="font-medium text-gray-900 mb-2">Performance Metrics</h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="text-gray-600">Tokens/Second:</span>
                       <span className="ml-2 font-medium">
-                        {processingMetadata.processing_time_ms > 0 
-                          ? Math.round((tokenUsage.total_tokens / processingMetadata.processing_time_ms) * 1000)
+                        {globalProcessingMetadata.processing_time_ms > 0 
+                          ? Math.round((globalTokenUsage.total_tokens / globalProcessingMetadata.processing_time_ms) * 1000)
                           : 'N/A'
                         }
                       </span>
@@ -533,7 +855,7 @@ export function MicrosoftAnswerDisplay({
                     <div>
                       <span className="text-gray-600">Efficiency:</span>
                       <span className="ml-2 font-medium">
-                        {processingMetadata.success ? 'Optimal' : 'Degraded'}
+                        {globalProcessingMetadata.success ? 'Optimal' : 'Degraded'}
                       </span>
                     </div>
                   </div>
@@ -621,11 +943,11 @@ export function MicrosoftAnswerDisplay({
       <TracingModal
         isOpen={showTracingModal}
         onClose={() => setShowTracingModal(false)}
-        tracingInfo={tracingInfo}
-        tokenUsage={tokenUsage}
-        processingMetadata={processingMetadata}
-        userMessage={userMessage?.content}
-        assistantMessage={assistantMessage?.content}
+        tracingInfo={globalTracingInfo}
+        tokenUsage={globalTokenUsage}
+        processingMetadata={globalProcessingMetadata}
+        userMessage={latestUserMessage?.content}
+        assistantMessage={latestAssistantMessage?.content}
       />
     </div>
   );

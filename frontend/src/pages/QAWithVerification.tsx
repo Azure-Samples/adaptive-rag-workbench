@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChatLayout } from '../components/ChatLayout';
 import { MicrosoftAnswerDisplay } from '../components/MicrosoftAnswerDisplay';
 import { MicrosoftInput } from '../components/MicrosoftInput';
@@ -21,8 +21,16 @@ export function QAWithVerification() {
     processingMetadata, 
     isLoading, 
     isStreaming,
-    sendMessage
-  } = useChatStream(selectedMode);
+    sendMessage,
+    clearMessages
+  } = useChatStream(selectedMode, false); // Disable sessions for QA mode
+
+  // Clear any existing messages when component mounts or mode changes
+  useEffect(() => {
+    if (clearMessages) {
+      clearMessages();
+    }
+  }, [clearMessages, selectedMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +39,6 @@ export function QAWithVerification() {
       setQuery('');
     }
   };
-
 
   const currentMessage = messages.length > 0 ? messages[messages.length - 1] : null;
   const hasResults = currentMessage && currentMessage.role === 'assistant';
@@ -99,6 +106,15 @@ export function QAWithVerification() {
             {/* Results */}
             {(hasResults || isLoading) && (
               <div className="space-y-6">
+                <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      <strong>QA Mode:</strong> Each question starts a fresh conversation. History is not saved or carried forward.
+                    </p>
+                  </div>
+                </div>
+                
                 <MicrosoftInput
                   query={query}
                   setQuery={setQuery}
