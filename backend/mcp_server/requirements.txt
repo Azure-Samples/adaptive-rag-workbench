@@ -1,0 +1,7 @@
+# HTTP API Server Dependencies for Azure AI Search
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+azure-search-documents>=11.5.2
+azure-identity>=1.15.0
+python-dotenv>=1.0.0
+pydantic>=2.0.0

@@ -83,6 +83,18 @@ export function StepsDisplay({ queryRewrites, ragMode, processingMetadata }: Ste
             </div>
           )}
 
+          {ragMode === 'mcp-rag' && (
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-xs font-medium text-blue-600">
+                2
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900">MCP Search</p>
+                <p className="text-sm text-gray-600">Using Model Context Protocol server for enhanced search capabilities</p>
+              </div>
+            </div>
+          )}
+
           {ragMode === 'deep-research-rag' && (
             <div className="flex items-start gap-3">
               <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center text-xs font-medium text-orange-600">
@@ -124,7 +136,7 @@ export function StepsDisplay({ queryRewrites, ragMode, processingMetadata }: Ste
               </div>
               <div>
                 <span className="font-medium text-gray-700">Semantic Ranking:</span>
-                <span className="ml-2 text-gray-600">{ragMode !== 'fast-rag' ? 'Performed' : 'Skipped'}</span>
+                <span className="ml-2 text-gray-600">{ragMode !== 'fast-rag' && ragMode !== 'mcp-rag' ? 'Performed' : 'Skipped'}</span>
               </div>
             </div>
           </div>

@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     chunk_size: int = int(os.getenv("CHUNK_SIZE", "1000"))
     chunk_overlap: int = int(os.getenv("CHUNK_OVERLAP", "200"))
     max_chunks_per_document: int = int(os.getenv("MAX_CHUNKS_PER_DOCUMENT", "500"))
+    
+    # MCP Server Configuration
+    mcp_server_url: str = os.getenv("MCP_SERVER_URL", f"http://localhost:{os.getenv('MCP_SERVER_PORT', '8001')}")
+    mcp_timeout: int = int(os.getenv("MCP_TIMEOUT", "30"))
+    mcp_default_top_k: int = int(os.getenv("MCP_DEFAULT_TOP_K", "5"))
+    mcp_max_content_length: int = int(os.getenv("MCP_MAX_CONTENT_LENGTH", "2000"))
 
     class Config:
         env_file = ".env"
