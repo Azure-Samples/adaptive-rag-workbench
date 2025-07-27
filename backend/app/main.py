@@ -41,7 +41,7 @@ app.add_middleware(
 app.include_router(chat_router, prefix="/api")
 app.include_router(ingest_router, prefix="/api")
 app.include_router(company_search_router, prefix="/api/companies")
-app.include_router(sec_documents_router)
+app.include_router(sec_documents_router, prefix="/api/sec")
 app.include_router(admin_router, prefix="/api")
 app.include_router(document_upload_router, prefix="/api/documents")
 

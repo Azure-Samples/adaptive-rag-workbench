@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { apiService } from "@/services/api";
 import { 
   FileText, 
   Upload, 
@@ -153,7 +154,7 @@ export const DocumentUpload: React.FC = () => {
       if (files.length === 1) {
         formData.append('file', files[0].file);
         
-        const response = await fetch('/api/upload', {
+        const response = await fetch(`${apiService.baseUrl}/upload`, {
           method: 'POST',
           body: formData
         });
@@ -197,7 +198,7 @@ export const DocumentUpload: React.FC = () => {
         ));
         
         try {
-          const response = await fetch('/api/upload', {
+          const response = await fetch(`${apiService.baseUrl}/upload`, {
             method: 'POST',
             body: fileFormData
           });

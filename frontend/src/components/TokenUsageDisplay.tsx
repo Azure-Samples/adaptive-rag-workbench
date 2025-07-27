@@ -1,6 +1,6 @@
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
-import { BarChart3, TrendingUp, Clock, DollarSign } from 'lucide-react';
+import { BarChart3, TrendingUp, Clock } from 'lucide-react';
 
 interface TokenUsage {
   prompt_tokens: number;
@@ -44,13 +44,6 @@ export function TokenUsageDisplay({ tokenUsage, processingMetadata, ragMode }: T
     );
   }
 
-  const inputCostRate = 0.0001; // $0.0001 per 1K tokens (example rate)
-  const outputCostRate = 0.0002; // $0.0002 per 1K tokens (example rate)
-  
-  const inputCost = (tokenUsage.prompt_tokens / 1000) * inputCostRate;
-  const outputCost = (tokenUsage.completion_tokens / 1000) * outputCostRate;
-  const totalCost = inputCost + outputCost;
-
   const tokensPerSecond = processingMetadata?.processing_time_ms 
     ? Math.round((tokenUsage.total_tokens / processingMetadata.processing_time_ms) * 1000)
     : 0;
@@ -86,30 +79,6 @@ export function TokenUsageDisplay({ tokenUsage, processingMetadata, ragMode }: T
             <div className="text-2xl font-bold text-purple-600">{tokenUsage.total_tokens.toLocaleString()}</div>
             <div className="text-sm text-gray-600">Total Tokens</div>
             <div className="text-xs text-gray-500 mt-1">Combined</div>
-          </div>
-        </div>
-
-        {/* Cost Breakdown */}
-        <div className="space-y-3">
-          <h4 className="font-medium text-gray-900 flex items-center gap-2">
-            <DollarSign className="h-4 w-4" />
-            Cost Breakdown
-          </h4>
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Input Cost ({tokenUsage.prompt_tokens.toLocaleString()} tokens):</span>
-                <span className="font-medium">${inputCost.toFixed(4)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Output Cost ({tokenUsage.completion_tokens.toLocaleString()} tokens):</span>
-                <span className="font-medium">${outputCost.toFixed(4)}</span>
-              </div>
-              <div className="flex justify-between border-t pt-2 font-medium">
-                <span className="text-gray-900">Total Cost:</span>
-                <span className="font-bold text-green-600">${totalCost.toFixed(4)}</span>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -206,29 +175,6 @@ export function TokenUsageDisplay({ tokenUsage, processingMetadata, ragMode }: T
                  tokenUsage.completion_tokens > 200 ? 'Well-structured answer' : 
                  'Quick, focused response'}
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Cost per Token Visualization */}
-        <div className="space-y-3">
-          <h4 className="font-medium text-gray-900">Cost Distribution</h4>
-          <div className="relative">
-            <div className="flex h-4 bg-gray-200 rounded-full overflow-hidden">
-              <div 
-                className="bg-primary transition-all duration-300"
-                style={{ width: `${(inputCost / totalCost) * 100}%` }}
-                title={`Input: ${((inputCost / totalCost) * 100).toFixed(1)}%`}
-              />
-              <div 
-                className="bg-green-500 transition-all duration-300"
-                style={{ width: `${(outputCost / totalCost) * 100}%` }}
-                title={`Output: ${((outputCost / totalCost) * 100).toFixed(1)}%`}
-              />
-            </div>
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>Input ({((inputCost / totalCost) * 100).toFixed(1)}%)</span>
-              <span>Output ({((outputCost / totalCost) * 100).toFixed(1)}%)</span>
             </div>
           </div>
         </div>

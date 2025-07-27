@@ -322,12 +322,14 @@ class BatchProcessingStatus(BaseModel):
     total_documents: int = Field(..., description="Total number of documents in batch")
     completed_documents: int = Field(default=0, description="Number of completed documents")
     failed_documents: int = Field(default=0, description="Number of failed documents")
-    processing_documents: int = Field(default=0, description="Number of documents currently processing")
+    current_processing: List[DocumentProcessingProgress] = Field(default_factory=list, description="Currently processing documents")
+    overall_progress_percent: float = Field(default=0.0, description="Overall progress percentage")
     started_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    completed_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+    estimated_completion: Optional[str] = None
     status: str = Field(default="processing", description="Overall batch status")
-    results: List[ProcessingResult] = Field(default_factory=list)
+    error_message: Optional[str] = None
 
 # SEC Document Processing Models
 class ProcessDocumentRequest(BaseModel):

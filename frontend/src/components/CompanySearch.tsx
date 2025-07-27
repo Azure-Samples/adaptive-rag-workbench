@@ -132,7 +132,7 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
 
   const handleProcessDocument = async (doc: DocumentResult) => {
     try {
-      const response = await fetch(`${apiService.baseUrl}/v1/sec/documents/process`, {
+      const response = await fetch(`${apiService.baseUrl}/sec/documents/process`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -155,10 +155,22 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
   };
 
   const handleViewDocument = (doc: DocumentResult) => {
-    if (doc.url) {
+    console.log('Viewing document:', doc);
+    console.log('Document URL:', doc.url);
+    
+    if (doc.url && doc.url.trim() !== '') {
       window.open(doc.url, '_blank');
     } else {
-      console.error('Document URL not available');
+      console.error('Document URL not available for document:', doc);
+      // Try to construct the URL if we have accession number
+      if (doc.id) {
+        // Construct SEC EDGAR URL directly
+        const edgarUrl = `https://www.sec.gov/Archives/edgar/data/${doc.cik}/${doc.id.replace(/-/g, '')}/${doc.id}-index.htm`;
+        console.log('Attempting to use constructed EDGAR URL:', edgarUrl);
+        window.open(edgarUrl, '_blank');
+      } else {
+        alert('Document URL is not available for this filing. This may be due to the document being too old or not accessible through the SEC EDGAR system.');
+      }
     }
   };
 
@@ -279,7 +291,7 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
         clearInterval(pollingInterval);
       }
     };
-  }, []); // Empty dependency array so it only runs on unmount
+  }, [pollingInterval]); // Include pollingInterval in dependency array
 
   const handleSearch = async () => {
     if (!searchFilters.company.trim()) {
@@ -300,7 +312,7 @@ export function CompanySearch({ onDocumentsFound }: CompanySearchProps) {
     try {
       if (searchFilters.searchType === 'company') {
         // Use SEC documents API for company search
-        const response = await fetch(`${apiService.baseUrl}/v1/sec/filings/specific`, {
+        const response = await fetch(`${apiService.baseUrl}/sec/filings/specific`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

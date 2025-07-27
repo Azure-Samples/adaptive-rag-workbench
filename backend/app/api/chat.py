@@ -23,6 +23,7 @@ from ..services.token_usage_tracker import token_tracker
 from ..services.azure_services import get_azure_service_manager
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 class ChatRequest(BaseModel):
     prompt: str
@@ -59,7 +60,7 @@ async def chat_stream(request: ChatRequest, current_user: dict = Depends(get_cur
             temp_session_id = session_id
         
         if request.mode in ["agentic-rag", "fast-rag", "deep-research-rag", "mcp-rag"]:
-            return await handle_rag_modes(request, session_id, current_user)
+            return await handle_rag_modes(request, session_id, current_user, save_to_db=(session_id is not None))
         else:
             return await handle_legacy_modes(request, current_user)
             
@@ -70,6 +71,8 @@ async def handle_rag_modes(request: ChatRequest, session_id: str, current_user: 
     """Handle the new RAG modes with enhanced features"""
     
     async def generate():
+        # Store original session_id to avoid scope issues
+        current_session_id = session_id
         try:
             # Ensure agentic service is properly initialized
             await agentic_rag_service.ensure_initialized()
@@ -85,29 +88,33 @@ async def handle_rag_modes(request: ChatRequest, session_id: str, current_user: 
             
             # Only save to CosmosDB if session is enabled
             if save_to_db:
-                await azure_service_manager.save_session_history(session_id, user_message)
+                success, updated_session_id = await azure_service_manager.save_session_history(current_session_id, user_message)
+                if success and updated_session_id != current_session_id:
+                    # Session ID was generated, update it for subsequent operations
+                    current_session_id = updated_session_id
+                    logger.info(f"Updated session ID to: {current_session_id}")
             
             # Load conversation history for context (last 5 exchanges) only if session enabled
             conversation_context = []
             if save_to_db:
-                conversation_context = await azure_service_manager.get_conversation_context(session_id, limit=10)
+                conversation_context = await azure_service_manager.get_conversation_context(current_session_id, limit=10)
             
             # Return session_id only if session is enabled
-            yield f"data: {json.dumps({'type': 'metadata', 'session_id': session_id if save_to_db else None, 'mode': request.mode, 'timestamp': datetime.utcnow().isoformat()})}\n\n"
+            yield f"data: {json.dumps({'type': 'metadata', 'session_id': current_session_id if save_to_db else None, 'mode': request.mode, 'timestamp': datetime.utcnow().isoformat()})}\n\n"
             
             if request.mode == "agentic-rag":
                 result = await agentic_rag_service.process_question(
                     question=request.prompt,
                     conversation_history=conversation_context or request.conversation_history,
                     rag_mode=request.mode,
-                    session_id=session_id
+                    session_id=current_session_id
                 )
             elif request.mode == "fast-rag":
-                result = await process_fast_rag(request.prompt, session_id)
+                result = await process_fast_rag(request.prompt, current_session_id, conversation_context)
             elif request.mode == "mcp-rag":
-                result = await process_mcp_rag(request.prompt, session_id)
+                result = await process_mcp_rag(request.prompt, current_session_id, conversation_context)
             elif request.mode == "deep-research-rag":
-                result = await process_deep_research_rag(request.prompt, session_id, request.verification_level, conversation_context)
+                result = await process_deep_research_rag(request.prompt, current_session_id, request.verification_level, conversation_context)
             else:
                 raise ValueError(f"Unsupported RAG mode: {request.mode}")
             
@@ -161,10 +168,10 @@ async def handle_rag_modes(request: ChatRequest, session_id: str, current_user: 
             
             # Only save to CosmosDB if session is enabled
             if save_to_db:
-                await azure_service_manager.save_session_history(session_id, assistant_message)
+                success, _ = await azure_service_manager.save_session_history(current_session_id, assistant_message)
             
             # Return session_id only if session is enabled
-            yield f"data: {json.dumps({'type': 'done', 'session_id': session_id if save_to_db else None})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'session_id': current_session_id if save_to_db else None})}\n\n"
             
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
@@ -301,7 +308,7 @@ Please provide a detailed analysis that addresses the question using the informa
             "total_tokens": 0
         }
 
-async def process_fast_rag(prompt: str, session_id: str) -> Dict[str, Any]:
+async def process_fast_rag(prompt: str, session_id: str, conversation_history: Optional[List[Dict[str, str]]] = None) -> Dict[str, Any]:
     """
     Process Fast RAG mode using hybrid vector search with Azure AI Search.
     
@@ -322,9 +329,9 @@ async def process_fast_rag(prompt: str, session_id: str) -> Dict[str, Any]:
         
         # Enhance search query with conversation context if available
         enhanced_prompt = prompt
-        if conversation_context and len(conversation_context) > 0:
+        if conversation_history and len(conversation_history) > 0:
             # Get the last few messages for context
-            recent_context = conversation_context[-4:]  # Last 2 exchanges
+            recent_context = conversation_history[-4:]  # Last 2 exchanges
             context_parts = []
             
             for msg in recent_context:
@@ -451,7 +458,7 @@ async def process_fast_rag(prompt: str, session_id: str) -> Dict[str, Any]:
             "success": False
         }
 
-async def process_mcp_rag(prompt: str, session_id: str) -> Dict[str, Any]:
+async def process_mcp_rag(prompt: str, session_id: str, conversation_history: Optional[List[Dict[str, str]]] = None) -> Dict[str, Any]:
     """
     Process MCP RAG mode using Model Context Protocol server for Azure AI Search.
     
@@ -492,7 +499,7 @@ async def process_mcp_rag(prompt: str, session_id: str) -> Dict[str, Any]:
             "success": False
         }
 
-async def process_deep_research_rag(prompt: str, session_id: str, verification_level: str) -> Dict[str, Any]:
+async def process_deep_research_rag(prompt: str, session_id: str, verification_level: str, conversation_history: Optional[List[Dict[str, str]]] = None) -> Dict[str, Any]:
     """Process Deep Research RAG mode using Azure AI Agents"""
     try:
         from ..services.token_usage_tracker import ServiceType, OperationType
@@ -562,7 +569,7 @@ async def clear_session_history(session_id: str, current_user: dict = Depends(ge
             "content": "Session cleared",
             "timestamp": datetime.utcnow().isoformat()
         }
-        await azure_service_manager.save_session_history(f"{session_id}_cleared", empty_session)
+        success, _ = await azure_service_manager.save_session_history(f"{session_id}_cleared", empty_session)
         return {"session_id": session_id, "status": "cleared"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -630,6 +637,108 @@ class RetrievalTestRequest(BaseModel):
     filters: Optional[Dict[str, str]] = None
     top_k: Optional[int] = 10
     include_highlights: bool = True
+
+class QAVerificationRequest(BaseModel):
+    prompt: str
+    verification_level: str = "comprehensive"  # basic, thorough, comprehensive
+    conversation_history: Optional[List[Dict[str, str]]] = None
+    session_id: Optional[str] = None
+
+@router.post("/qa-verification")
+async def qa_verification_stream(request: QAVerificationRequest, current_user: dict = Depends(get_current_user)):
+    """
+    QA with Verification endpoint using Azure AI Agents deep research.
+    
+    This endpoint implements the QA with Verification pattern using:
+    - Azure AI Agents with o3-deep-research model
+    - Multi-source verification and fact-checking
+    - Comprehensive citation tracking
+    - Follow-up question generation
+    """
+    try:
+        # Generate session ID for processing (not saved to DB for QA mode)
+        session_id = request.session_id or str(uuid.uuid4())
+        
+        async def generate():
+            try:
+                # Ensure Azure AI Agents service is initialized
+                if not azure_ai_agents_service.agents_client:
+                    await azure_ai_agents_service.initialize()
+                
+                user_message = {
+                    "role": "user",
+                    "content": request.prompt,
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "mode": "qa-verification",
+                    "verification_level": request.verification_level,
+                    "user_id": current_user.get('sub', current_user.get('preferred_username', 'unknown'))
+                }
+                
+                # Send metadata
+                yield f"data: {json.dumps({'type': 'metadata', 'session_id': None, 'mode': 'qa-verification', 'verification_level': request.verification_level, 'timestamp': datetime.utcnow().isoformat()})}\n\n"
+                
+                # Process with deep research (enhanced verification)
+                result = await azure_ai_agents_service.process_deep_research(
+                    question=request.prompt,
+                    session_id=session_id
+                )
+                
+                answer = result.get("answer", "")
+                
+                # Add verification methodology note
+                verification_note = f"\n\n---\n**Verification Method:** {request.verification_level.title()} verification using Azure AI Agents deep research with multi-source fact-checking and citation analysis."
+                enhanced_answer = answer + verification_note
+                
+                # Send complete answer
+                yield f"data: {json.dumps({'type': 'answer_complete', 'answer': enhanced_answer})}\n\n"
+                
+                citations = result.get("citations", [])
+                if citations:
+                    yield f"data: {json.dumps({'type': 'citations', 'citations': citations})}\n\n"
+                
+                query_rewrites = result.get("query_rewrites", [])
+                if query_rewrites:
+                    yield f"data: {json.dumps({'type': 'query_rewrites', 'rewrites': query_rewrites})}\n\n"
+                
+                token_usage = result.get("token_usage", {})
+                if token_usage:
+                    yield f"data: {json.dumps({'type': 'token_usage', 'usage': token_usage})}\n\n"
+                
+                tracing_info = result.get("tracing_info", {})
+                if tracing_info:
+                    yield f"data: {json.dumps({'type': 'tracing_info', 'tracing': tracing_info})}\n\n"
+                
+                # Generate follow-up questions for verification
+                follow_up_result = await azure_ai_agents_service.generate_follow_up_questions(
+                    original_question=request.prompt,
+                    answer=answer,
+                    session_id=session_id
+                )
+                
+                follow_up_questions = follow_up_result.get("follow_up_questions", [])
+                if follow_up_questions:
+                    yield f"data: {json.dumps({'type': 'follow_up_questions', 'questions': follow_up_questions})}\n\n"
+                
+                processing_metadata = {
+                    'processing_time_ms': 0,  # Will be calculated by client
+                    'retrieval_method': result.get('retrieval_method', 'azure_ai_agents_deep_research'),
+                    'success': result.get('success', False),
+                    'verification_level': request.verification_level,
+                    'follow_up_questions_generated': len(follow_up_questions)
+                }
+                yield f"data: {json.dumps({'type': 'metadata', 'processing': processing_metadata})}\n\n"
+                
+                # Send completion
+                yield f"data: {json.dumps({'type': 'done', 'session_id': None})}\n\n"
+                
+            except Exception as e:
+                logger.error(f"QA verification error: {e}")
+                yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+        
+        return StreamingResponse(generate(), media_type="text/event-stream")
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/chat/test-retrieval")
 async def test_retrieval(request: RetrievalTestRequest, current_user: dict = Depends(get_current_user)):

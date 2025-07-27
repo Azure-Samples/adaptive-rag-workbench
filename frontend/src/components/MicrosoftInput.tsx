@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Select, SelectContent, SelectTrigger } from './ui/select';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
   Loader2, 
@@ -15,7 +15,6 @@ import {
   Users, 
   Building2,
   ChevronDown,
-  ChevronRight,
   Network
 } from 'lucide-react';
 
@@ -41,12 +40,6 @@ interface Source {
   enabled: boolean;
 }
 
-interface Model {
-  id: string;
-  name: string;
-  description?: string;
-}
-
 export function MicrosoftInput({
   query,
   setQuery,
@@ -58,9 +51,7 @@ export function MicrosoftInput({
   placeholder = "Ask anything...",
   hideExampleQuestions = false
 }: MicrosoftInputProps) {
-  const [selectedModel, setSelectedModel] = useState('gpt-4-1');
   const { theme } = useTheme();
-  const [showMoreModels, setShowMoreModels] = useState(false);
   const [sources, setSources] = useState<Source[]>([
     {
       id: 'web',
@@ -125,17 +116,6 @@ export function MicrosoftInput({
       bgColor: theme === 'customer' ? 'bg-primary/10' : 'bg-purple-50',
       borderColor: theme === 'customer' ? 'border-primary/20' : 'border-purple-200'
     }
-  ];
-
-  const primaryModels: Model[] = [
-    { id: 'gpt-4-1', name: 'GPT-4.1', description: 'Powerful, large model for complex challenges' },
-    { id: 'gpt-o3', name: 'gpt-o3', description: 'Smart, efficient model for reasoning' },
-    { id: 'gpt-o4-mini', name: 'gpt-o4-mini', description: 'Fastest model for reasoning' }
-  ];
-  
-  const additionalModels: Model[] = [
-    { id: 'claude-sonnet-3-7', name: 'Claude Sonnet 3.7 on Azure Databricks' },
-    { id: 'gemini-2-5-pro', name: 'Gemini-2.5-pro via APIM' }
   ];
 
   const getDynamicExampleQueries = (mode: RAGMode): string[] => {
@@ -251,111 +231,6 @@ export function MicrosoftInput({
 
             {/* Right Side - Controls */}
             <div className="flex items-center gap-2">
-              {/* Model Picker - Simplified Perplexity Style */}
-              <div className="relative">
-                <Select 
-                  value={selectedModel} 
-                  onValueChange={(value) => {
-                    if (value !== 'more-models') {
-                      setSelectedModel(value);
-                      setShowMoreModels(false);
-                    }
-                  }}
-                >
-                  <SelectTrigger className={`w-auto min-w-[140px] h-8 px-3 text-sm font-medium border rounded-md transition-colors duration-200 focus:ring-1 focus:ring-offset-1 ${
-                    theme === 'dark'
-                      ? 'border-gray-600 bg-gray-800 text-white focus:ring-gray-400'
-                      : theme === 'customer'
-                      ? 'border-primary/30 bg-white text-gray-900 focus:ring-primary/40'
-                      : 'border-gray-300 bg-white text-gray-900 focus:ring-gray-400'
-                  }`}>
-                    <div className="flex items-center justify-between w-full">
-                      <SelectValue />
-                      <ChevronDown className="h-3.5 w-3.5 ml-1" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent className={`w-64 p-0 border shadow-md ${
-                    theme === 'dark'
-                      ? 'border-gray-600 bg-gray-800'
-                      : theme === 'customer'
-                      ? 'border-primary/30 bg-white'
-                      : 'border-gray-300 bg-white'
-                  }`}>
-                    <div className="py-1 px-2">
-                      {primaryModels.map((model) => (
-                        <SelectItem key={model.id} value={model.id} className={`py-1.5 px-3 rounded-md cursor-pointer ${
-                          theme === 'dark'
-                            ? 'hover:bg-gray-700 text-white'
-                            : 'hover:bg-gray-100 text-gray-900'
-                        }`}>
-                          <div className="flex items-center justify-between w-full">
-                            <span className="font-medium text-sm">{model.name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}                        <div 
-                        className={`relative py-1.5 px-3 rounded-md cursor-pointer border-t mt-1 group ${
-                          theme === 'dark'
-                            ? 'hover:bg-gray-700 border-gray-600'
-                            : 'hover:bg-gray-100 border-gray-200'
-                        }`}
-                        onMouseEnter={() => {
-                          console.log('Mouse entered More models');
-                          setShowMoreModels(true);
-                        }}
-                        onMouseLeave={() => {
-                          console.log('Mouse left More models');
-                          setTimeout(() => setShowMoreModels(false), 150);
-                        }}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className={`text-sm font-medium ${
-                            theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
-                          }`}>More models</span>
-                          <ChevronRight className="h-3.5 w-3.5" />
-                        </div>
-                        
-                        {/* Submenu for additional models */}
-                        {showMoreModels && (
-                          <div 
-                            className={`absolute left-full top-0 ml-1 w-64 border shadow-lg rounded-md z-[60] ${
-                              theme === 'dark'
-                                ? 'bg-gray-800 border-gray-600'
-                                : 'bg-white border-gray-300'
-                            }`}
-                            onMouseEnter={() => {
-                              console.log('Mouse entered submenu');
-                              setShowMoreModels(true);
-                            }}
-                            onMouseLeave={() => {
-                              console.log('Mouse left submenu');
-                              setShowMoreModels(false);
-                            }}
-                          >
-                            <div className="py-1 px-2">
-                              {additionalModels.map((model) => (
-                                <div
-                                  key={model.id}
-                                  className={`py-1.5 px-3 rounded-md cursor-pointer ${
-                                    theme === 'dark'
-                                      ? 'hover:bg-gray-700 text-white'
-                                      : 'hover:bg-gray-100 text-gray-900'
-                                  }`}
-                                  onClick={() => {
-                                    setSelectedModel(model.id);
-                                    setShowMoreModels(false);
-                                  }}
-                                >
-                                  <span className="font-medium text-sm">{model.name}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </SelectContent>
-                </Select>
-              </div>
 
               {/* Source Selector (only for QA with Verification) */}
               {showSourceSelector && (

@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     mcp_timeout: int = int(os.getenv("MCP_TIMEOUT", "30"))
     mcp_default_top_k: int = int(os.getenv("MCP_DEFAULT_TOP_K", "5"))
     mcp_max_content_length: int = int(os.getenv("MCP_MAX_CONTENT_LENGTH", "2000"))
+    
+    # O3 Deep Research Configuration
+    o3_bing_resource_name: str = os.getenv("O3_BING_RESOURCE_NAME", "groundingbingsearch")
+    o3_model_deployment_name: str = os.getenv("O3_MODEL_DEPLOYMENT_NAME", "gpt-4o")
+    deep_research_model_deployment_name: str = os.getenv("DEEP_RESEARCH_MODEL_DEPLOYMENT_NAME", "o3-deep-research")
 
     class Config:
         env_file = ".env"

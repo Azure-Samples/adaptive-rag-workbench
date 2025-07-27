@@ -12,7 +12,7 @@ export function QAWithVerification() {
   const { theme } = useTheme();
   
   const [query, setQuery] = useState('');
-  const [selectedMode, setSelectedMode] = useState<RAGMode>('fast-rag');
+  const [selectedMode, setSelectedMode] = useState<RAGMode>('deep-research-rag'); // Use deep-research-rag for QA verification
   const { 
     messages, 
     citations, 

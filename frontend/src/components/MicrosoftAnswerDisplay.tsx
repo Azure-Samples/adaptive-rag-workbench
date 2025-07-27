@@ -821,24 +821,6 @@ export function MicrosoftAnswerDisplay({
                 </div>
               </div>
 
-              <div className="mt-6 space-y-3">
-                <h4 className="font-medium text-gray-900">Cost Breakdown</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Input Cost:</span>
-                    <span className="font-medium">${(globalTokenUsage.prompt_tokens * 0.0001).toFixed(4)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Output Cost:</span>
-                    <span className="font-medium">${(globalTokenUsage.completion_tokens * 0.0002).toFixed(4)}</span>
-                  </div>
-                  <div className="flex justify-between border-t pt-2">
-                    <span className="font-medium text-gray-900">Total Cost:</span>
-                    <span className="font-bold">${((globalTokenUsage.prompt_tokens * 0.0001) + (globalTokenUsage.completion_tokens * 0.0002)).toFixed(4)}</span>
-                  </div>
-                </div>
-              </div>
-
               {globalProcessingMetadata && (
                 <div className="mt-6 p-4 bg-gray-50 rounded-lg">
                   <h4 className="font-medium text-gray-900 mb-2">Performance Metrics</h4>

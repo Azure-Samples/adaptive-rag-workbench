@@ -72,20 +72,31 @@ export function useChatStream(mode: string, enableSessions: boolean = true, onMo
   const [sessionId, setSessionId] = useState<string>('');
   const { getAccessToken } = useAuth();
 
+  // Add debugging for sessionId changes
   useEffect(() => {
+    console.log(`SessionId state changed to: "${sessionId}"`);
+  }, [sessionId]);
+
+  useEffect(() => {
+    console.log(`useChatStream useEffect - mode: ${mode}, enableSessions: ${enableSessions}`);
     if (enableSessions) {
       const storedSessionId = localStorage.getItem(`chat_session_${mode}`);
+      console.log(`Stored session ID for mode ${mode}:`, storedSessionId);
       if (storedSessionId) {
+        console.log(`Setting session ID from storage: ${storedSessionId}`);
         setSessionId(storedSessionId);
         loadSessionHistory(storedSessionId);
       } else {
         const newSessionId = generateSessionId();
+        console.log(`Generated new session ID: ${newSessionId}`);
         setSessionId(newSessionId);
         localStorage.setItem(`chat_session_${mode}`, newSessionId);
       }
     } else {
       // For non-session mode, use a temporary session ID but don't persist or load history
-      setSessionId(`temp_${Date.now()}`);
+      const tempSessionId = `temp_${Date.now()}`;
+      console.log(`Using temporary session ID: ${tempSessionId}`);
+      setSessionId(tempSessionId);
       setMessages([]);
     }
   }, [mode, enableSessions]);
@@ -191,18 +202,23 @@ export function useChatStream(mode: string, enableSessions: boolean = true, onMo
         headers['Authorization'] = `Bearer ${token}`;
       }
 
+      const requestBody = { 
+        prompt: content,
+        mode: mode,
+        session_id: sessionId,
+        conversation_history: messages.map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }))
+      };
+      
+      console.log(`Submitting message with sessionId: "${sessionId}", enableSessions: ${enableSessions}, mode: ${mode}`);
+      console.log('Request body:', requestBody);
+
       const response = await fetch(`${apiService.baseUrl}/chat`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ 
-          prompt: content,
-          mode: mode,
-          session_id: sessionId,
-          conversation_history: messages.map(msg => ({
-            role: msg.role,
-            content: msg.content
-          }))
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -326,9 +342,21 @@ export function useChatStream(mode: string, enableSessions: boolean = true, onMo
                   setTokenUsage(data.usage);
                 }
                 
-                if (data.type === 'metadata' && data.processing) {
-                  currentProcessingMetadata = data.processing;
-                  setProcessingMetadata(data.processing);
+                if (data.type === 'metadata') {
+                  // Handle session_id updates from backend
+                  if (data.session_id && data.session_id !== sessionId) {
+                    setSessionId(data.session_id);
+                    // Update localStorage if sessions are enabled
+                    if (enableSessions) {
+                      localStorage.setItem(`chat_session_${mode}`, data.session_id);
+                    }
+                  }
+                  
+                  // Handle processing metadata
+                  if (data.processing) {
+                    currentProcessingMetadata = data.processing;
+                    setProcessingMetadata(data.processing);
+                  }
                 }
                 
                 if (data.type === 'tracing_info' && data.tracing) {
@@ -374,7 +402,7 @@ export function useChatStream(mode: string, enableSessions: boolean = true, onMo
       setIsLoading(false);
       setIsStreaming(false);
     }
-  }, [mode, getAccessToken]);
+  }, [mode, getAccessToken, sessionId, enableSessions, messages]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);

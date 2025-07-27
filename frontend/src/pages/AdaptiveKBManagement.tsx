@@ -159,7 +159,7 @@ export function AdaptiveKBManagement() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const uploadResponse = await fetch(`/api/upload-with-progress/${sessionId}`, {
+      const uploadResponse = await fetch(`${apiService.baseUrl}/upload-with-progress/${sessionId}`, {
         method: 'POST',
         body: formData,
       });
@@ -169,7 +169,7 @@ export function AdaptiveKBManagement() {
       }
 
       // Start listening to progress stream
-      const eventSource = new EventSource(`/api/processing-stream/${sessionId}`);
+      const eventSource = new EventSource(`${apiService.baseUrl}/processing-stream/${sessionId}`);
 
       eventSource.onopen = (event) => {
         console.log('SSE connection opened successfully:', event);
@@ -567,7 +567,7 @@ export function AdaptiveKBManagement() {
                   <Button
                     onClick={() => {
                       const testSessionId = `test_${Date.now()}`;
-                      const eventSource = new EventSource(`/api/test-sse/${testSessionId}`);
+                      const eventSource = new EventSource(`${apiService.baseUrl}/test-sse/${testSessionId}`);
                       let messageCount = 0;
                       
                       eventSource.onmessage = (event) => {

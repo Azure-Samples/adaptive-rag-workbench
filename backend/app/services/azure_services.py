@@ -19,6 +19,9 @@ import asyncio
 import logging
 import os
 import platform
+import random
+import traceback
+import uuid
 from typing import List, Dict, Any, Optional, Union
 from datetime import datetime, date
 import hashlib
@@ -226,48 +229,52 @@ class AzureServiceManager:
             
             # Initialize CosmosDB client
             if hasattr(settings, 'azure_cosmos_endpoint') and settings.azure_cosmos_endpoint:
-                logger.info(f"Initializing CosmosDB client with endpoint: {settings.azure_cosmos_endpoint}")
-                try:
-                    # Check if we have service principal credentials
-                    if (hasattr(settings, 'azure_tenant_id') and settings.azure_tenant_id and
-                        hasattr(settings, 'azure_client_id') and settings.azure_client_id and
-                        hasattr(settings, 'azure_client_secret') and settings.azure_client_secret):
-                        logger.info("Using Service Principal authentication for CosmosDB")
-                        cosmos_credential = ClientSecretCredential(
-                            tenant_id=settings.azure_tenant_id,
-                            client_id=settings.azure_client_id,
-                            client_secret=settings.azure_client_secret
-                        )
-                    elif hasattr(settings, 'azure_cosmos_key') and settings.azure_cosmos_key:
-                        logger.info("Using CosmosDB key for authentication")
-                        cosmos_credential = settings.azure_cosmos_key
-                    elif self.credential:
-                        logger.info("Using existing Azure credential for CosmosDB authentication")
-                        cosmos_credential = self.credential
-                    else:
-                        logger.warning("No suitable CosmosDB authentication method found")
-                        self.cosmos_client = None
-                        return
-                    
-                    self.cosmos_client = CosmosClient(
-                        url=settings.azure_cosmos_endpoint,
-                        credential=cosmos_credential
-                    )
-                    
-                    if self.cosmos_client:
-                        logger.info("CosmosDB client initialized successfully")
-                        # Test the connection by listing databases
-                        try:
-                            list(self.cosmos_client.list_databases())
-                            logger.info("CosmosDB connection test successful")
-                        except Exception as test_e:
-                            logger.warning(f"CosmosDB connection test failed: {test_e}")
-                    
-                except Exception as e:
-                    logger.error(f"Failed to initialize CosmosDB client: {e}")
-                    import traceback
-                    logger.error(f"CosmosDB initialization error details: {traceback.format_exc()}")
+                if CosmosClient is None:
+                    logger.warning("CosmosDB client not available - azure-cosmos package not installed")
                     self.cosmos_client = None
+                else:
+                    logger.info(f"Initializing CosmosDB client with endpoint: {settings.azure_cosmos_endpoint}")
+                    try:
+                        # Check if we have service principal credentials
+                        if (hasattr(settings, 'azure_tenant_id') and settings.azure_tenant_id and
+                            hasattr(settings, 'azure_client_id') and settings.azure_client_id and
+                            hasattr(settings, 'azure_client_secret') and settings.azure_client_secret):
+                            logger.info("Using Service Principal authentication for CosmosDB")
+                            cosmos_credential = ClientSecretCredential(
+                                tenant_id=settings.azure_tenant_id,
+                                client_id=settings.azure_client_id,
+                                client_secret=settings.azure_client_secret
+                            )
+                        elif hasattr(settings, 'azure_cosmos_key') and settings.azure_cosmos_key:
+                            logger.info("Using CosmosDB key for authentication")
+                            cosmos_credential = settings.azure_cosmos_key
+                        elif self.credential:
+                            logger.info("Using existing Azure credential for CosmosDB authentication")
+                            cosmos_credential = self.credential
+                        else:
+                            logger.warning("No suitable CosmosDB authentication method found")
+                            self.cosmos_client = None
+                            return
+                        
+                        self.cosmos_client = CosmosClient(
+                            url=settings.azure_cosmos_endpoint,
+                            credential=cosmos_credential
+                        )
+                        
+                        if self.cosmos_client:
+                            logger.info("CosmosDB client initialized successfully")
+                            # Test the connection by listing databases
+                            try:
+                                list(self.cosmos_client.list_databases())
+                                logger.info("CosmosDB connection test successful")
+                            except Exception as test_e:
+                                logger.warning(f"CosmosDB connection test failed: {test_e}")
+                        
+                    except Exception as e:
+                        logger.error(f"Failed to initialize CosmosDB client: {e}")
+                        import traceback
+                        logger.error(f"CosmosDB initialization error details: {traceback.format_exc()}")
+                        self.cosmos_client = None
             else:
                 logger.warning("CosmosDB endpoint not configured - session storage will be disabled")
                 self.cosmos_client = None
@@ -1077,19 +1084,25 @@ This mock document represents a typical 10-K annual report structure with financ
         else:
             return "Sample Financial Corporation"
 
-    async def save_session_history(self, session_id: str, message: Dict) -> bool:
+    async def save_session_history(self, session_id: str, message: Dict) -> tuple[bool, str]:
         """Save chat session history to CosmosDB"""
+        original_session_id = session_id  # Store original value at start
         try:
+            # Generate a new session ID if none provided or empty
+            if not session_id or session_id.strip() == "":
+                session_id = str(uuid.uuid4())
+                logger.info(f"Generated new session ID: {session_id}")
+            
             logger.info(f"Attempting to save session {session_id} - Mock mode: {self._use_mock}, CosmosDB client: {self.cosmos_client is not None}")
             
             if self._use_mock:
                 logger.info(f"Mock mode enabled - skipping session history save for {session_id}")
-                return True
+                return True, session_id
                 
             if not self.cosmos_client:
                 logger.warning(f"CosmosDB client not available - skipping session history save for {session_id}")
                 logger.warning(f"CosmosDB endpoint configured: {getattr(settings, 'azure_cosmos_endpoint', 'NOT_SET')}")
-                return False
+                return False, session_id
             
             database = self.cosmos_client.get_database_client(settings.azure_cosmos_database_name)
             container = database.get_container_client(settings.azure_cosmos_container_name)
@@ -1108,24 +1121,106 @@ This mock document represents a typical 10-K annual report structure with financ
                     "mode": message.get("mode", "unknown")
                 }
             
-            # Update user_id and mode if not set
+            # Ensure required fields exist (for backward compatibility with existing documents)
+            if "messages" not in session_doc:
+                session_doc["messages"] = []
             if "user_id" not in session_doc:
                 session_doc["user_id"] = message.get("user_id", "unknown")
             if "mode" not in session_doc:
                 session_doc["mode"] = message.get("mode", "unknown")
                 
-            session_doc["messages"].append(message)
+            # Clean and validate the message before adding it
+            import json
+            
+            # Debug: Log the original message structure
+            logger.info(f"Original message keys: {list(message.keys()) if message else 'None'}")
+            logger.info(f"Original message role: {message.get('role', 'MISSING') if message else 'None'}")
+            
+            cleaned_message = {}
+            for key, value in message.items():
+                try:
+                    # Ensure the value can be JSON serialized
+                    json.dumps(value, default=str)
+                    cleaned_message[key] = value
+                except (TypeError, ValueError) as e:
+                    logger.warning(f"Skipping non-serializable field '{key}': {e}")
+                    cleaned_message[key] = str(value)  # Convert to string as fallback
+            
+            # Debug: Log the cleaned message structure
+            logger.info(f"Cleaned message keys: {list(cleaned_message.keys())}")
+            logger.info(f"Cleaned message role: {cleaned_message.get('role', 'MISSING')}")
+                    
+            session_doc["messages"].append(cleaned_message)
             session_doc["updated_at"] = message.get("timestamp")
+            
+            # Validate and clean the document before saving
+            try:
+                # Check for valid session_id and document id
+                if not session_id or session_id.strip() == "":
+                    logger.error(f"Invalid session_id: '{session_id}' - cannot save to CosmosDB")
+                    return False
+                
+                if "id" not in session_doc or not session_doc["id"] or session_doc["id"].strip() == "":
+                    logger.error(f"Invalid document id: '{session_doc.get('id', 'MISSING')}' - setting to session_id")
+                    session_doc["id"] = session_id
+                
+                # Ensure document can be JSON serialized
+                json_str = json.dumps(session_doc, default=str)
+                
+                # Check document size (CosmosDB has 2MB limit)
+                doc_size = len(json_str.encode('utf-8'))
+                if doc_size > 1.8 * 1024 * 1024:  # 1.8MB safety margin
+                    logger.warning(f"Session document size ({doc_size} bytes) approaching CosmosDB limit")
+                    # Trim old messages if document is too large
+                    while len(session_doc["messages"]) > 10 and doc_size > 1.8 * 1024 * 1024:
+                        session_doc["messages"].pop(0)  # Remove oldest message
+                        doc_size = len(json.dumps(session_doc, default=str).encode('utf-8'))
+                        
+                logger.debug(f"Saving session document ID: '{session_doc['id']}' with {len(session_doc['messages'])} messages, size: {doc_size} bytes")
+                
+                # Log document structure for debugging
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug(f"Document structure: {list(session_doc.keys())}")
+                    logger.debug(f"Latest message keys: {list(cleaned_message.keys()) if cleaned_message else 'None'}")
+                
+            except Exception as validation_error:
+                logger.error(f"Session document validation failed: {validation_error}")
+                logger.error(f"Session ID: '{session_id}'")
+                logger.error(f"Document keys: {list(session_doc.keys())}")
+                logger.error(f"Document ID field: '{session_doc.get('id', 'MISSING')}'")
+                logger.error(f"Message keys: {list(message.keys()) if message else 'None'}")
+                return False, session_id
             
             container.upsert_item(session_doc)
             logger.info(f"Successfully saved session {session_id} to CosmosDB with {len(session_doc['messages'])} messages")
-            return True
+            return True, session_id
             
         except Exception as e:
-            logger.error(f"Failed to save session history for {session_id}: {e}")
+            # Use the current session_id value, or original if there was an error
+            error_session_id = session_id if 'session_id' in locals() else original_session_id
+            
+            logger.error(f"Failed to save session history for {error_session_id}: {e}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
-            return False
+            
+            # Additional debugging for CosmosDB errors
+            if "BadRequest" in str(e) and "invalid" in str(e).lower():
+                logger.error(f"CosmosDB BadRequest Details:")
+                logger.error(f"  - Session ID: '{error_session_id}'")
+                logger.error(f"  - Document ID: '{session_doc.get('id', 'MISSING') if 'session_doc' in locals() else 'NOT_CREATED'}'")
+                logger.error(f"  - Document size: {len(json.dumps(session_doc, default=str)) if 'session_doc' in locals() else 'UNKNOWN'} chars")
+                logger.error(f"  - Message count: {len(session_doc.get('messages', [])) if 'session_doc' in locals() else 'UNKNOWN'}")
+                logger.error(f"  - Document keys: {list(session_doc.keys()) if 'session_doc' in locals() else 'NOT_CREATED'}")
+                
+                # Try to identify problematic fields
+                if 'session_doc' in locals():
+                    for key, value in session_doc.items():
+                        try:
+                            json.dumps({key: value}, default=str)
+                        except Exception as field_error:
+                            logger.error(f"  - Problematic field '{key}': {field_error}")
+            
+            return False, error_session_id
 
     async def get_session_history(self, session_id: str) -> List[Dict]:
         """Retrieve chat session history from CosmosDB"""

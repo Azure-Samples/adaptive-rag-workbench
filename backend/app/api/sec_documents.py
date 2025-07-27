@@ -20,7 +20,7 @@ from app.models.schemas import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/sec", tags=["SEC Documents"])
+router = APIRouter(prefix="", tags=["SEC Documents"])
 
 class CompanySearchRequest(BaseModel):
     query: str
